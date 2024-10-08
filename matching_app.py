@@ -3,15 +3,14 @@ import pandas as pd
 import re
 import openai
 from io import BytesIO
+from config import set_page_config, apply_global_css
 from utils import select_app, toggle_info
-
-st.set_page_config(page_title="Key Account Übersetzungsbüro Express🌍")
 
 def matching_app():
         # Einstellungen für die allgemeine App
     col1, col2 = st.columns([8, 2])
     with col1:
-        st.markdown(f"<h1></h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1>Matching Übersetzungsbüro 🌍</h1>", unsafe_allow_html=True)
     with col2:
         st.markdown(
             "<div style='display: flex; justify-content: flex-end;'>",
@@ -206,10 +205,10 @@ def matching_app():
 
     # Hauptanwendung
     def main_app():
-        st.title("Key Account Übersetzungsbüro Express🌍")
+        st.title("KI Matching App")
 
         st.markdown("""
-        Willkommen im Übersetzungsbüro! Diese App hilft dir dabei, Texte zwischen einer Rogator-Umfrageexport-Datei und einer Übersetzungsdatei abzugleichen und die passenden Übersetzungen einzufügen.
+        Willkommen im Matching-Übersetzungsbüro! Diese App hilft dir dabei, Texte zwischen einer Rogator-Umfrageexport-Datei und einer Übersetzungsdatei abzugleichen und die passenden Übersetzungen einzufügen.
         
         **So funktioniert's:**
         1. Lade deine **Rogator-Exportdatei** hoch (im `.xlsx` Format).

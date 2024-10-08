@@ -7,6 +7,7 @@ import re
 from time import sleep
 import tenacity
 from utils import select_app, toggle_info
+from config import set_page_config, apply_global_css
 
 def allgemeine_app():
     # Einstellungen für die allgemeine App

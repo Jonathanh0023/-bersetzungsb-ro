@@ -7,7 +7,7 @@ import re
 from time import sleep
 import tenacity
 from utils import select_app, toggle_info
-
+from config import set_page_config, apply_global_css
 def key_account_app():
     # Einstellungen für die Key Account App
     col1, col2 = st.columns([8, 2])

@@ -45,7 +45,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "Allgemeines Übersetzungsbüro",
+            "**Allgemeines KI-Übersetzungsbüro**",
             on_click=lambda: select_app("allgemein"),
             key="allgemein_button",
         )
@@ -68,7 +68,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "Key Account Übersetzungsbüro\n\n (Nur für fortgeschrittene Anwender)",
+            "**Key Account Übersetzungsbüro**\n\n (inaktiv)",
             on_click=lambda: select_app("key_account"),
             key="key_account_button",
         )
@@ -88,7 +88,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "Matching-App\n\n (Für vorgegebene Übersetzungen und ergänzender KI-Übersetzung)",
+            "**KI-Matching App**\n\n (Hilft dir dabei, Texte zwischen einer Rogator-Umfrageexport-Datei und einer Übersetzungsdatei abzugleichen und die passenden Übersetzungen zu finden)",
             on_click=lambda: select_app("matching"),
             key="matching_button",
         )
