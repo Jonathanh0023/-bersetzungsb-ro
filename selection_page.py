@@ -92,6 +92,7 @@ def selection_page():
             on_click=lambda: select_app("matching"),
             key="matching_button",
         )
-
+def select_app(app_name):
+    st.session_state.app_selected = app_name
 # Call the function to display the page
 selection_page()
