@@ -10,7 +10,7 @@ def matching_app():
         # Einstellungen für die allgemeine App
     col1, col2 = st.columns([8, 2])
     with col1:
-        st.markdown(f"<h1>Matching Übersetzungsbüros 🕵️‍♂️</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1>Matching Übersetzungsbüro 🕵️‍♂️</h1>", unsafe_allow_html=True)
     with col2:
         st.markdown(
             "<div style='display: flex; justify-content: flex-end;'>",
