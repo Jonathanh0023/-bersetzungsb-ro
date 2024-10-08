@@ -1,0 +1,6 @@
+streamlit
+pandas
+openai
+tenacity
+xlsxwriter
+openpyxl
