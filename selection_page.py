@@ -14,7 +14,7 @@ def set_bg_hack_url():
          f"""
          <style>
          .stApp {{
-             background: url("https://img.freepik.com/free-vector/pastel-ombre-background-pink-purple_53876-120750.jpg?t=st=1728382568~exp=1728386168~hmac=33339876d6f5859458aa443b13364c4127e8739c3231bf1c88595c20cee3f988&w=1380#");
+             background: url("https://img.freepik.com/free-vector/gradient-blur-pink-blue-abstract-background_53876-117324.jpg?t=st=1728382860~exp=1728386460~hmac=e50bb401976f0ae1edf8d47f95b3141539d0209abd7df39350ba5035f7b802c8&w=1380");
              background-size: cover
          }}
          </style>
