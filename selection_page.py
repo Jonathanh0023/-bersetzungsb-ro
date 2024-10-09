@@ -94,5 +94,6 @@ def selection_page():
         )
 def select_app(app_name):
     st.session_state.app_selected = app_name
-# Call the function to display the page
-selection_page()
+
+# Removed the following line to prevent duplicate invocations
+# selection_page()
