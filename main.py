@@ -8,6 +8,7 @@ from matching_app import matching_app  # Importiere die Matching-App
 
 def main():
     # Setze die Seitenkonfiguration als ersten Streamlit-Befehl
+    set_page_config()
     apply_global_css()
 
     # Session-State initialisieren
