@@ -24,8 +24,28 @@ def set_bg_hack_url():
     
 def selection_page():
     set_bg_hack_url()  # Call the function to set the background
-    st.markdown("<h1>Willkommen im bonsAI Übersetzungsbüro 📚</h1>", unsafe_allow_html=True)
-    st.write("Bitte wähle die gewünschte Anwendung aus:")
+    st.markdown(
+        """
+        <div style='display: flex; align-items: center; justify-content: center; width: 100%;'>
+            <h1 style='margin: 0; display: inline-flex; align-items: center; white-space: nowrap;'>
+                <img src='https://sw01.rogsurvey.de/data/bonsai/Kara_23_19/logo_Bonsa_BONSAI_neu.png' 
+                     style='height: 80px; margin-right: 10px;'/>
+                Willkommen im bonsAI Übersetzungsbüro 📚
+            </h1>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Center the instruction text
+    st.markdown(
+        """
+        <div style='text-align: center; margin-top: 10px; margin-bottom: 0px;'>
+            <h2 style='font-size: 16px;'>Bitte wähle die gewünschte Anwendung aus:</h2>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Größere Buttons erstellen - Erste Zeile mit einem Button
     col1, col2, col3 = st.columns([1, 10, 1])  # Make the middle column wider to match the width of two columns below
@@ -37,7 +57,7 @@ def selection_page():
                 height: 150px;
                 width: 100%;
                 font-size: 18px;
-                color: 3c3c3c; /* 3c3c3c text */
+                color: #3c3c3c; /* Corrected color format */
                 border-radius: 15px; /* Rounded corners */
             }}
             </style>
@@ -60,7 +80,7 @@ def selection_page():
                 height: 150px;
                 width: 100%;
                 font-size: 18px;
-                color: 3c3c3c; /* 3c3c3c text */
+                color: #3c3c3c; /* Corrected color format */
                 border-radius: 15px; /* Rounded corners */
             }}
             </style>
@@ -80,7 +100,7 @@ def selection_page():
                 height: 150px;
                 width: 100%;
                 font-size: 18px;
-                color: 3c3c3c; /* 3c3c3c text */
+                color: #3c3c3c; /* Corrected color format */
                 border-radius: 15px; /* Rounded corners */
             }}
             </style>
