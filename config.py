@@ -9,7 +9,7 @@ def set_page_config():
 
 def apply_global_css():
     heading_font_size_h1 = 30  # Schriftgröße für h1-Überschriften
-    heading_font_size_h2 = 24  # Schriftgröße für h2-Überschriften
+    heading_font_size_h2 = 18  # Schriftgröße für h2-Überschriften
     button_font_size = 14      # Schriftgröße für Buttons
 
     st.markdown(
