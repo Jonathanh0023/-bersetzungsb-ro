@@ -532,3 +532,33 @@ def matching_app():
         main_app()
     else:
         show_tutorial()
+
+    # Add this section in the main_app function where you describe the app functionality
+    with st.expander("📄 Beispiel für die Dateistruktur"):
+        st.markdown("""
+        Die hochzuladende Datei muss im Excel-Format (.xlsx) vorliegen und sollte die folgenden Spalten enthalten:
+
+        Hier ist ein Beispiel für die Struktur der Übersetzungsdatei:
+
+        | Englisch | Deutsch               |
+        |------------------|------------------|
+        | Hello            | Hallo            |
+        | Thank you        | Danke            |
+        """)
+
+        # Add a sample file download button
+        sample_file = BytesIO()
+        with pd.ExcelWriter(sample_file, engine='openpyxl') as writer:
+            sample_df = pd.DataFrame({
+                'Master / English': ['Hello', 'Thank you'],
+                'DE': ['Hallo', 'Danke']
+            })
+            sample_df.to_excel(writer, index=False)
+        sample_file.seek(0)
+
+        st.download_button(
+            label="Beispiel-Übersetzungsdatei herunterladen",
+            data=sample_file,
+            file_name="sample_translation_file.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
