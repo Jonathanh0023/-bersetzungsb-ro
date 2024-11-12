@@ -246,6 +246,7 @@ def allgemeine_app():
             "Spanish",
             "Italian",
             "Polish",
+            "Arabic"
         ]
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
