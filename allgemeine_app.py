@@ -98,12 +98,12 @@ def allgemeine_app():
                 "widget": lambda: (
                     st.selectbox(
                         "Ausgangssprache",
-                        ["English", "German", "French", "Spanish", "Italian", "Polish"],
+                        ["English", "German", "French", "Spanish", "Italian", "Polish", "Arabic"],
                         disabled=True,
                     ),
                     st.selectbox(
                         "Zielsprache",
-                        ["German", "English", "French", "Spanish", "Italian", "Polish"],
+                        ["German", "English", "French", "Spanish", "Italian", "Polish", "Arabic"],
                         disabled=True,
                     ),
                 ),
