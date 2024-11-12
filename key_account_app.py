@@ -8,6 +8,22 @@ from time import sleep
 import tenacity
 from utils import select_app, toggle_info
 from config import set_page_config, apply_global_css
+
+def generate_system_message(source_language, target_language, survey_topic, survey_content):
+    return (
+        f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}. "
+        f"The topic of the survey is '{survey_topic}'. Your primary goal is to ensure that the translation sounds natural and fluent for native speakers while preserving all technical and programming elements accurately.\n\n"
+        "Programming Instructions: All programming instructions, including codes and strings (e.g., 'Screenout', 'Quote'), must remain exactly as they are in the translation. "
+        "Rogator-specific syntax, which always begins with !% and ends with %!, represents dynamic placeholders and must be retained unchanged, as these will later be populated by the software.\n\n"
+        "Curly Brace Elements: Retain all elements within curly braces and any country codes without translating them.\n\n"
+        "Form of Address: Use the polite form ('Sie') for direct addresses. For job titles or personal forms of address, ensure gender inclusivity by using both masculine and feminine forms or a gender-neutral term if appropriate.\n\n"
+        "Content Translation: Translate the meaning rather than word-for-word. Ensure the translation is fluent and natural for native speakers, without changing the original intent.\n\n"
+        "Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit {target_language} linguistic nuances. Your response should include only the translated text. "
+        "If the input is a code or a placeholder, reproduce it exactly without translation.\n\n"
+        "Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the {target_language} audience.\n\n"
+        f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}"
+    )
+
 def key_account_app():
     # Einstellungen für die Key Account App
     col1, col2 = st.columns([8, 2])
