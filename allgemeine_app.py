@@ -244,7 +244,7 @@ def allgemeine_app():
             "German",
             "French",
             "Spanish",
-            "Arabic",
+            "Italian",
             "Polish",
             "Arabic"
         ]
