@@ -83,23 +83,16 @@ def matching_app():
     # Funktion zur Generierung der Systemnachricht für GPT
     def generate_system_message(source_language, respondent_group, survey_topic, target_language, survey_content):
         return (
-            f"You are helping to translate a questionnaire from {source_language} to {target_language}. "
-            "Ensure that all programming instructions like codes and strings remain unchanged in the translation. "
-            "When addressing people personally and for job titles, use the polite form and translate the masculine and feminine form or a neutral term. "
-            "Only words within curly braces and country codes should not be translated. If you see only a code, you output only the code. "
-            "It is crucial that all programming instructions such as 'Screenout' and codes are reproduced exactly in the translation. Your response is only the translation or the code of the input. "
-            "Here are a few examples of an English-German translation: "
-            "Original - J&J Customer Journey DE | Translated - J&J Customer Journey DE / "
-            "Original - !%L-S1%! Please indicate your gender: | Translated - !%L-S1%! Bitte geben Sie Ihr Geschlecht an: / "
-            "Original - {!%I-progress.txt%!} | Translated - {!%I-progress.txt%!} / "
-            "Original - &#10148 | Translated - &#10148 / "
-            "Original - Male | Translated - Männlich / "
-            "Original - Female | Translated - Weiblich / "
-            "Original - Other | Translated - Andere / "
-            "Original - Yes | Translated - Ja / "
-            "Original - No | Translated - Nein\n\n"
-            "Take your time and think carefully about the right translation, it is essential that everything is translated correctly.\n\n"
-            f"For your information, this is what the questionnaire is about:\n{survey_content}"
+            f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}. "
+            f"The topic of the survey is '{survey_topic}'. Your primary goal is to ensure that the translation sounds natural and fluent for native speakers while preserving all technical and programming elements accurately.\n\n"
+            "Programming Instructions: All programming instructions, including codes and strings (e.g., 'Screenout', 'Quote'), must remain exactly as they are in the translation. "
+            "Rogator-specific syntax, which always begins with !% and ends with %!, represents dynamic placeholders and must be retained unchanged, as these will later be populated by the software.\n\n"
+            "Curly Brace Elements: Retain all elements within curly braces and any country codes without translating them.\n\n"
+            "Form of Address: Use the polite form ('Sie') for direct addresses. For job titles or personal forms of address, ensure gender inclusivity by using both masculine and feminine forms or a gender-neutral term if appropriate.\n\n"
+            "Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit German linguistic nuances. Your response should include only the translated text. "
+            "If the input is a code or a placeholder, reproduce it exactly without translation.\n\n"
+            "Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the German audience.\n\n"
+            f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}"
         )
 
     # Tutorial und Info-Texte
