@@ -534,7 +534,7 @@ def matching_app():
         show_tutorial()
 
     # Add this section in the main_app function where you describe the app functionality
-    with st.expander("📄 Beispiel für die Dateistruktur"):
+    with st.expander("📄 Beispiel für die Dateistruktur der Übersetzungsdatei"):
         st.markdown("""
         Die hochzuladende Datei muss im Excel-Format (.xlsx) vorliegen und sollte die folgenden Spalten enthalten:
 
