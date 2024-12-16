@@ -186,8 +186,7 @@ def allgemeine_app():
         country
     ):
         return (
-            f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}. "
-            f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}. "
+            f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}."
             f"The topic of the survey is '{survey_topic}'. Your primary goal is to ensure that the translation sounds natural and fluent for native speakers while preserving all technical and programming elements accurately.\n\n"
             "Programming Instructions: All programming instructions, including codes and strings (e.g., 'Screenout', 'Quote'), must remain exactly as they are in the translation. "
             "Rogator-specific syntax, which always begins with !% and ends with %!, represents dynamic placeholders and must be retained unchanged, as these will later be populated by the software.\n\n"
