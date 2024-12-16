@@ -331,8 +331,6 @@ def allgemeine_app():
         def clean_text(text):
             if pd.isna(text):
                 return text
-            # Entferne HTML-Tags mittels Regex
-            text = re.sub(r'<.*?>', '', text)
             # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
             text = ' '.join(text.split())
             return text
