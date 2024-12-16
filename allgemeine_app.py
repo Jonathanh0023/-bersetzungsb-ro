@@ -328,10 +328,14 @@ def allgemeine_app():
             )
 
         # Funktion zur Bereinigung des Textes
+# Funktion zur Bereinigung des Textes
         def clean_text(text):
             if pd.isna(text):
+                return text
+        # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
             text = ' '.join(text.split())
             return text
+
 
         # Dateiupload
         col1, col2 = st.columns([10, 1])
