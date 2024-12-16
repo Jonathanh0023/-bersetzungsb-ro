@@ -228,7 +228,7 @@ def allgemeine_app():
                 toggle_info("show_model_selection_info")
         if st.session_state.get("show_model_selection_info", False):
             st.info(info_texts["model_selection"])
-        model_options = ["gpt-4o", "gpt-4o-mini", "gpt-o1-mini", "gpt-o1-preview"]
+        model_options = ["gpt-4o", "gpt-4o-mini"]
         selected_model = st.selectbox("Wähle das Modell", model_options, index=0)
 
         # Eingabefeld für die Batchgröße
