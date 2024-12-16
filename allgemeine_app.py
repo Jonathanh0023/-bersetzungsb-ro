@@ -77,7 +77,7 @@ def allgemeine_app():
                 "content": "Wähle das GPT-Modell aus, das du verwenden möchtest. Für die beste Leistung empfehlen wir dir GPT-4o.\n",
                 "widget": lambda: st.selectbox(
                     "Wähle das Modell",
-                    ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
+                    ["gpt-4o", "gpt-4o-mini", "gpt-o1-mini", "gpt-o1-preview"],
                     disabled=True,
                 ),
             },
