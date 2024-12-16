@@ -330,8 +330,6 @@ def allgemeine_app():
         # Funktion zur Bereinigung des Textes
         def clean_text(text):
             if pd.isna(text):
-                return text
-            # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
             text = ' '.join(text.split())
             return text
 
