@@ -193,7 +193,7 @@ def allgemeine_app():
             "Curly Brace Elements: Retain all elements within curly braces and any country codes without translating them.\n\n"
             "Form of Address: Use the polite form ('Sie') for direct addresses. For job titles or personal forms of address, ensure gender inclusivity by using both masculine and feminine forms or a gender-neutral term if appropriate.\n\n"
             "If the sentence already uses a polite form of address, such as 'Veuillez' or 'Pourriez-vous' in French, it is not necessary to include phrases like 's'il vous plaît' for example."
-            "For example, the German phrase ‘Würden Sie uns bitte das Alter der Kinder unter 18 Jahren nennen?’ would be translated into French as ‘Veuillez nous indiquer l'âge des enfants de moins de 18 ans?’ and the ‘s'il vous plaît’ can be omitted.\n\n"
+            "For example, the German phrase ‘Würden Sie uns bitte’ would be translated into French as ‘Veuillez nous’ and the ‘s'il vous plaît’ can be omitted.\n\n"
             "Content Translation: Translate the meaning rather than word-for-word. Ensure the translation is fluent and natural for native speakers, without changing the original intent.\n\n"
             "Language-Specific Conventions: Pay special attention to conventional sentence structures and placement of polite expressions in the target language. For French, for example, the phrase 's'il vous plaît' is typically placed at the beginning or end of the sentence, not in the middle."
             f"Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit {target_language} linguistic nuances. Your response should include only the translated text. "
