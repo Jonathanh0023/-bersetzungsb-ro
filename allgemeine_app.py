@@ -52,6 +52,7 @@ def allgemeine_app():
         "respondent_group": "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. Gebe die Befragtengruppe und das Thema am besten auf Englisch ein.",
         "survey_content": "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\nz.B. 'The purpose of the questionnaire is to determine whether dentists recommend Listerine as a mouthwash and to understand their reasons for doing so or not.'",
         "file_upload": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, Spalten mit anderen Überschriften werden nicht übersetzt. Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' herunterladen.",
+        "country": "Hier wählst du das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird an die kulturellen Besonderheiten dieses Ziellandes angepasst. Sollte dein Zielland nicht verfügbar sein oder du bist unsicher, melde dich gerne bei Jonathan Heeckt oder Tobias Bucher."
     }
 
     # Tutorial anzeigen
@@ -109,7 +110,15 @@ def allgemeine_app():
                 ),
             },
             {
-                "title": "Schritt 5: Befragtengruppe und Thema angeben",
+                "title": "Schritt 5: Zielland",
+                "content": "Wähle das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird dann an die kulturellen Gegebenheiten dieses Ziellandes angepasst.\n",
+                "widget": lambda: st.text_input(
+                    "Land, in dem die Befragung durchgeführt wird, z.B. 'Germany'",
+                    disabled=True,
+                ),
+            },
+            {
+                "title": "Schritt 6: Befragtengruppe und Thema angeben",
                 "content": "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. Gib die Befragtengruppe und das Thema am besten auf Englisch ein.\n",
                 "widget": lambda: (
                     st.text_input(
@@ -123,7 +132,7 @@ def allgemeine_app():
                 ),
             },
             {
-                "title": "Schritt 6: Fragebogen",
+                "title": "Schritt 7: Fragebogen",
                 "content": "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\nz.B. 'The purpose of the questionnaire is to determine whether dentists recommend Listerine as a mouthwash and to understand their reasons for doing so or not.'\n",
                 "widget": lambda: st.text_area(
                     "Beschreibe hier in 1-2 Sätzen das Ziel und das Thema des Fragebogens auf Englisch.",
@@ -132,14 +141,14 @@ def allgemeine_app():
                 ),
             },
             {
-                "title": "Schritt 7: Dateiupload",
+                "title": "Schritt 8: Dateiupload",
                 "content": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, Spalten mit anderen Überschriften werden nicht übersetzt.\n\n",
                 "widget": lambda: st.file_uploader(
                     "Wähle eine Datei", type=["xlsx"], disabled=True
                 ),
             },
             {
-                "title": "Schritt 8: Übersetzung starten",
+                "title": "Schritt 9: Übersetzung starten",
                 "content": "Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' herunterladen.",
                 "widget": lambda: None,
             },
@@ -174,6 +183,7 @@ def allgemeine_app():
         survey_topic,
         target_language,
         survey_content,
+        country
     ):
         return (
             f"You are assisting an English-speaking programmer in translating a questionnaire from {source_language} into {target_language}. "
@@ -185,8 +195,10 @@ def allgemeine_app():
             "Content Translation: Translate the meaning rather than word-for-word. Ensure the translation is fluent and natural for native speakers, without changing the original intent.\n\n"
             f"Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit {target_language} linguistic nuances. Your response should include only the translated text. "
             "If the input is a code or a placeholder, reproduce it exactly without translation.\n\n"
-            f"Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the {target_language} audience.\n\n"
-            f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}"
+            "Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the "
+            f"{target_language} audience.\n\n"
+            f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}\n\n"
+            f"Additionally, consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity and appropriateness for respondents in {country}, please integrate them."
         )
 
     # Hauptanwendung
@@ -254,6 +266,17 @@ def allgemeine_app():
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
 
+        # Zielland-Eingabefeld mit Info-Icon
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.subheader("Zielland")
+        with col2:
+            if st.button("ℹ️", key="info_country"):
+                toggle_info("show_country_info")
+        if st.session_state.get("show_country_info", False):
+            st.info(info_texts["country"])
+        country = st.text_input("Land, in dem die Befragung durchgeführt wird (z.B. 'Germany'):")
+
         # Neue Eingabefelder für Befragtengruppe und Thema der Befragung
         col1, col2 = st.columns([10, 1])
         with col1:
@@ -291,6 +314,7 @@ def allgemeine_app():
             survey_topic,
             target_language,
             survey_content,
+            country
         )
 
         # Zusammenklappbare Systemanweisung mit Warnhinweis
@@ -314,6 +338,10 @@ def allgemeine_app():
 
         if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
+            if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
+                st.error("Die hochgeladene Excel-Datei enthält nicht die erforderlichen Spalten 'Vergleichstext Ursprungsversion' und/oder 'Text zur Übersetzung / Versionsanpassung'. Bitte laden Sie eine gültige Datei hoch.")
+                return
+
             st.write("Originaltext")
 
             # Platzhalter für die DataFrame-Aktualisierung
@@ -437,10 +465,9 @@ def allgemeine_app():
                                 "If the translation is correct according to these guidelines, respond with 'True'. If there is a mistake or if you think it could be translated better, respond with 'False'."
                             )
 
-                            # QM-Check mit tenacity
                             qm_check_result = ask_assistant_qm_check(
                                 client,
-                                "gpt-4o",
+                                "gpt-4o-mini",
                                 [
                                     {"role": "system", "content": qm_check_message},
                                     {
