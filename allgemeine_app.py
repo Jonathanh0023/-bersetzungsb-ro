@@ -195,10 +195,10 @@ def allgemeine_app():
             "Content Translation: Translate the meaning rather than word-for-word. Ensure the translation is fluent and natural for native speakers, without changing the original intent.\n\n"
             f"Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit {target_language} linguistic nuances. Your response should include only the translated text. "
             "If the input is a code or a placeholder, reproduce it exactly without translation.\n\n"
-            "Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the "
             f"{target_language} audience.\n\n"
             f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}\n\n"
-            f"Also, be sure to consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity, precision and appropriateness for respondents in {country}, please integrate them. When translating, base your translation on how the wording and linguistic expression is usually formulated in {country}"
+            f"Also, be sure to consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity, precision and appropriateness for respondents in {country}, please integrate them. When translating, base your translation on how the wording and linguistic expression is usually formulated in {country}.\n\n"
+            f"Attention to Detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy and cultural appropriateness for the translation."
         )
 
     def main_app():
