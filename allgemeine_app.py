@@ -201,7 +201,6 @@ def allgemeine_app():
             f"Additionally, consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity and appropriateness for respondents in {country}, please integrate them."
         )
 
-    # Hauptanwendung
     def main_app():
         def toggle_info(key):
             # Toggle the visibility of the info popup
@@ -275,7 +274,7 @@ def allgemeine_app():
                 toggle_info("show_country_info")
         if st.session_state.get("show_country_info", False):
             st.info(info_texts["country"])
-        country = st.text_input("Land, in dem die Befragung durchgeführt wird (z.B. 'Germany'):")
+        country = st.text_input("Land, in dem die Befragung durchgeführt wird (z.B. 'Germany'): ")
 
         # Neue Eingabefelder für Befragtengruppe und Thema der Befragung
         col1, col2 = st.columns([10, 1])
@@ -325,6 +324,16 @@ def allgemeine_app():
                 "Gib die Systemanweisung ein", value=system_message, height=200
             )
 
+        # Funktion zur Bereinigung des Textes
+        def clean_text(text):
+            if pd.isna(text):
+                return text
+            # Entferne HTML-Tags mittels Regex
+            text = re.sub(r'<.*?>', '', text)
+            # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
+            text = ' '.join(text.split())
+            return text
+
         # Dateiupload
         col1, col2 = st.columns([10, 1])
         with col1:
@@ -341,6 +350,9 @@ def allgemeine_app():
             if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
                 st.error("Die hochgeladene Excel-Datei enthält nicht die erforderlichen Spalten 'Vergleichstext Ursprungsversion' und/oder 'Text zur Übersetzung / Versionsanpassung'. Bitte laden Sie eine gültige Datei hoch.")
                 return
+
+            # Vorverarbeitung der Texte
+            df["Vergleichstext Ursprungsversion"] = df["Vergleichstext Ursprungsversion"].apply(clean_text)
 
             st.write("Originaltext")
 
