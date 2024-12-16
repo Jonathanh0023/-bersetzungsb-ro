@@ -198,7 +198,7 @@ def allgemeine_app():
             f"{target_language} audience.\n\n"
             f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}\n\n"
             f"Also, be sure to consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity, precision and appropriateness for respondents in {country}, please integrate them. When translating, base your translation on how the wording, sentence structure and linguistic expression is usually formulated in {country}.\n\n"
-            f"Attention to detail: Take the necessary time to carefully consider each term. It is critical to maintain both accuracy, sentence structure and cultural appropriateness for the translation."
+            f"Attention to detail: Take the necessary time to carefully consider each term. It is critical to maintain accuracy, sentence structure and cultural appropriateness {target_language} for the translation."
         )
 
     def main_app():
