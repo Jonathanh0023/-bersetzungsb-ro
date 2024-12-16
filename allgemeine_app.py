@@ -479,7 +479,7 @@ def allgemeine_app():
 
                             qm_check_result = ask_assistant_qm_check(
                                 client,
-                                "gpt-4o-mini",
+                                "gpt-4o",
                                 [
                                     {"role": "system", "content": qm_check_message},
                                     {
