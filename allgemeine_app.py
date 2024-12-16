@@ -328,7 +328,6 @@ def allgemeine_app():
             )
 
         # Funktion zur Bereinigung des Textes
-# Funktion zur Bereinigung des Textes
         def clean_text(text):
             if pd.isna(text):
                 return text
