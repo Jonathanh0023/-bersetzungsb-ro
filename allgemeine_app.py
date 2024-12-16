@@ -192,15 +192,14 @@ def allgemeine_app():
             "Rogator-specific syntax, which always begins with !% and ends with %!, represents dynamic placeholders and must be retained unchanged, as these will later be populated by the software.\n\n"
             "Curly Brace Elements: Retain all elements within curly braces and any country codes without translating them.\n\n"
             "Form of Address: Use the polite form ('Sie') for direct addresses. For job titles or personal forms of address, ensure gender inclusivity by using both masculine and feminine forms or a gender-neutral term if appropriate.\n\n"
+            "If the sentence already uses a polite form of address such as 'Veuillez' or 'Pourriez-vous', it may not be necessary to include phrases like 's'il vous plaît'.\n\n"
             "Content Translation: Translate the meaning rather than word-for-word. Ensure the translation is fluent and natural for native speakers, without changing the original intent.\n\n"
             "Language-Specific Conventions: Pay special attention to conventional sentence structures and placement of polite expressions in the target language. For French, for example, the phrase 's'il vous plaît' is typically placed at the beginning or end of the sentence, not in the middle."
-            "If the sentence already uses a polite form of address such as 'Veuillez' or 'Pourriez-vous', it may not be necessary to include 's'il vous plaît' at all.\n\n"
             f"Consistency in Style: Ensure a consistent and natural style throughout the translation, adapting the language to suit {target_language} linguistic nuances. Your response should include only the translated text. "
             "If the input is a code or a placeholder, reproduce it exactly without translation.\n\n"
-            f"{target_language} audience.\n\n"
             f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}\n\n"
             f"Also, be sure to consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity, precision and appropriateness for respondents in {country}, please integrate them. When translating, base your translation on how the wording, sentence structure and linguistic expression is usually formulated in {country}.\n\n"
-            f"Attention to detail: Take the necessary time to carefully consider each term. It is critical to maintain accuracy, sentence structure, and cultural appropriateness in {target_language} for the translation."
+            f"Attention to detail: Take the necessary time to carefully consider each term. It is critical to maintain accuracy, sentence structure, and cultural appropriateness in {country} for the translation."
 
         )
 
