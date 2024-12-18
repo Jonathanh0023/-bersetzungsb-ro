@@ -5,6 +5,10 @@ import openai
 from io import BytesIO
 from config import set_page_config, apply_global_css
 from utils import select_app, toggle_info
+from github import Github
+import base64
+import json
+import os
 
 def matching_app():
         # Einstellungen für die allgemeine App
@@ -112,6 +116,10 @@ def matching_app():
         st.session_state.tutorial_done = False  # Tutorial zu Beginn anzeigen
     if 'tutorial_step' not in st.session_state:
         st.session_state.tutorial_step = 0
+    if 'template_loaded' not in st.session_state:
+        st.session_state.template_loaded = False
+    if 'translation_file' not in st.session_state:
+        st.session_state.translation_file = None
 
     def reset_tutorial():
         st.session_state.tutorial_done = False
@@ -168,10 +176,10 @@ def matching_app():
             "content": "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\n z.B. 'The purpose of the questionnaire is to determine whether dentists recommend Listerine as a mouthwash and to understand their reasons for doing so or not.'\n", 
             "widget": lambda: st.text_area("Beschreibe hier in 1-2 Sätzen das Ziel und das Thema des Fragebogens auf Englisch.", height=100, disabled=True)},
             {"title": "Schritt 7: Dateiupload", 
-            "content": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excelformat akzeptiert.\n Achtung: Es wird immer die Spalte mit der Überschrift „Text zur Übersetzung / Versionsanpassung“ übersetzt, Spalten mit anderen Überschriften werden nicht übersetzt.\n\n", 
+            "content": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excelformat akzeptiert.\n Achtung: Es wird immer die Spalte mit der Überschrift „Text zur Übersetzung / Versionsanpassung“ übersetzt, Spalten mit anderen ������berschriften werden nicht übersetzt.\n\n", 
             "widget": lambda: st.file_uploader("Wähle eine Datei", type=["xlsx"])},
             {"title": "Schritt 8: Matching der Texte", 
-            "content": "Sobald deine Rogator-Datei und Übersetzungsdatei hochgeladen sind, wird ein Matching durchgeführt. Dies bedeutet:\n\n- Texte aus der Spalte „Vergleichstext Ursprungsversion“ in der Rogator-Datei werden mit den englischen Texten in der Übersetzungsdatei abgeglichen.\n- Wenn ein übereinstimmender Text gefunden wird, wird die entsprechende Übersetzung automatisch eingefügt.\n- Spezielle Fälle wie Codierungen oder Platzhalter werden nicht übersetzt, sondern direkt übernommen.\n\nKlicke „Weiter“, um mehr über den Übersetzungsprozess zu erfahren.",
+            "content": "Sobald deine Rogator-Datei und Übersetzungsdatei hochgeladen sind, wird ein Matching durchgeführt. Dies bedeutet:\n\n- Texte aus der Spalte „Vergleichstext Ursprungsversion“ in der Rogator-Datei werden mit den englischen Texten in der Übersetzungsdatei abgeglichen.\n- Wenn ein übereinstimmender Text gefunden wird, wird die entsprechende Übersetzung automatisch eingefügt.\n- Spezielle Fälle wie Codierungen oder Platzhalter werden nicht übersetzt, sondern direkt übernommen.\n\nKlicke „Weiter���, um mehr über den Übersetzungsprozess zu erfahren.",
             "widget": lambda: None},
             {"title": "Schritt 9: KI-Übersetzung starten", 
             "content": "Texte, die im Matching-Prozess nicht gefunden wurden, können von der KI übersetzt werden. Dafür musst du deinen OpenAI API-Schlüssel eingeben und die Option „Starte KI-Übersetzung“ nutzen.\n\n Die KI verwendet den angegebenen Kontext und die Systemanweisungen, um die Übersetzungen so präzise wie möglich zu gestalten.",
@@ -290,7 +298,7 @@ def matching_app():
         with st.expander("Systemanweisung für die KI (Achtung: Nur für fortgeschrittene Anwender)"):
             custom_system_message = st.text_area("Gib die Systemanweisung ein", value=system_message, height=200)
 
-    # Füge das Menü für die festen Regeln direkt darunter ein
+        # Füge das Menü für die festen Regeln direkt darunter ein
         with st.expander("Feste Regeln für das Matching (Achtung: Nur für fortgeschrittene Anwender)"):
             st.markdown("### Bearbeite die Regeln, um festzulegen, wann ein Text immer dupliziert werden soll:")
             
@@ -356,9 +364,59 @@ def matching_app():
         
         st.markdown("---")
 
-        # Datei-Upload
+        # Datei-Upload oder Template verwenden
         rogator_file = st.file_uploader("Lade deine Rogator-Exportdatei hoch", type=["xlsx"])
-        translation_file = st.file_uploader("Lade deine Übersetzungsdatei hoch", type=["xlsx"])
+        
+        # Übersetzungsdatei-Upload-Bereich
+        st.subheader("Übersetzungsdatei")
+        upload_method = st.radio(
+            "Wähle eine Option:",
+            ["Neue Übersetzungsdatei hochladen", "Vorlage verwenden"],
+            index=0
+        )
+
+        if upload_method == "Neue Übersetzungsdatei hochladen":
+            translation_file = st.file_uploader("Lade deine Übersetzungsdatei hoch", type=["xlsx"])
+        else:
+            # Template-Auswahl
+            templates = load_templates_from_github()
+            if templates:
+                selected_template = st.selectbox(
+                    "Verfügbare Übersetzungsvorlagen",
+                    options=[t['name'] for t in templates],
+                    index=None,
+                    placeholder="Wähle eine Vorlage..."
+                )
+                
+                if selected_template:
+                    if st.button("🔄 Vorlage laden", key="load_template"):
+                        try:
+                            g = Github(st.secrets["github"]["token"])
+                            repo = g.get_repo(st.secrets["github"]["repo"])
+                            template = next(t for t in templates if t['name'] == selected_template)
+                            content = repo.get_contents(template['path'])
+                            file_content = content.decoded_content  # Korrekte Binärdaten
+                            
+                            # Behandle die Datei wie einen normalen File-Upload
+                            file_like = BytesIO(file_content)
+                            file_like.name = template['path']  # Setze einen Dateinamen
+                            
+                            # Speichere die Datei im Session State
+                            st.session_state.translation_file = file_like
+                            st.session_state.template_loaded = True
+                            st.success(f"✅ Vorlage '{selected_template}' erfolgreich geladen!")
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"❌ Fehler beim Laden der Vorlage: {str(e)}")
+            else:
+                st.info("🔍 Keine Vorlagen verfügbar.")
+            
+            # Verwende die geladene Template-Datei wenn vorhanden
+            if st.session_state.get("template_loaded", False) and st.session_state.get("translation_file") is not None:
+                translation_file = st.session_state.translation_file
+            else:
+                translation_file = None
 
         if rogator_file and translation_file:
             try:
@@ -404,7 +462,7 @@ def matching_app():
                     # Bereinigung für Matching
                     cleaned_for_matching = clean_text_for_matching(text_to_translate)
 
-                    # Versuchen, eine bestehende Übersetzung zu finden
+                    # Versuchen, eine bestehende ��bersetzung zu finden
                     if cleaned_for_matching in translation_dict:
                         translation = translation_dict[cleaned_for_matching]
                         # Überprüfen, ob die Übersetzung leer, "nan" oder None ist
@@ -420,7 +478,7 @@ def matching_app():
                     else:
                         # Statt alle nicht gematchten Texte zu sammeln, prüfen wir, ob die Zelle nach dem Matching leer ist
                         existing_translation = row.get('Text zur Übersetzung / Versionsanpassung', "")
-                        # Prüfen, ob die Übersetzungszelle leer, `None`, oder nur aus Whitespaces besteht
+                        # Prüfen, ob die ��bersetzungszelle leer, `None`, oder nur aus Whitespaces besteht
                         if pd.isna(existing_translation) or existing_translation is None or existing_translation.strip() == "":
                             unmatched_texts.append(text_to_translate)
                             unmatched_indices.append(index)
@@ -527,6 +585,35 @@ def matching_app():
             except Exception as e:
                 st.error(f"Es ist ein Fehler aufgetreten: {e}")
 
+        st.markdown("---")
+        
+        # Template Management (optional)
+        with st.expander("📚 Vorlagen verwalten"):
+            st.header("Übersetzungsvorlagen")
+            st.markdown("""
+            Hier können Übersetzungsdateien als Vorlagen gespeichert und wiederverwendet werden.
+            """)
+            
+            new_template = st.file_uploader(
+                "Excel-Datei (.xlsx)",
+                type=["xlsx"],
+                key="template_uploader",
+                help="Die Datei sollte zwei Spalten enthalten: 'Master / English' und 'DE'"
+            )
+            
+            template_description = st.text_input(
+                "Beschreibung/Name der Vorlage",
+                placeholder="z.B. Henkel Waschmaittel Spanisch",
+                help="Geben Sie einen beschreibenden Namen für die Vorlage ein"
+            )
+            
+            if new_template and template_description:
+                if st.button("💾 Als Vorlage speichern", key="save_template"):
+                    with st.spinner("Speichere Vorlage..."):
+                        if save_translation_to_github(new_template, template_description):
+                            st.success("✅ Vorlage erfolgreich gespeichert!")
+                            st.rerun()
+
     # Zeige Hauptanwendung oder Tutorial
     if st.session_state.tutorial_done:
         main_app()
@@ -562,3 +649,81 @@ def matching_app():
             file_name="sample_translation_file.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+def save_translation_to_github(translation_file, description):
+    """
+    Speichert eine Übersetzungsdatei auf GitHub als Template
+    """
+    try:
+        # Lese die Excel-Datei als DataFrame
+        df = pd.read_excel(translation_file, engine='openpyxl')
+        
+        # Erstelle eine neue Excel-Datei
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+        
+        g = Github(st.secrets["github"]["token"])
+        repo = g.get_repo(st.secrets["github"]["repo"])
+        
+        # Dateiname generieren
+        file_name = f"templates/{description.lower().replace(' ', '_')}.xlsx"
+        
+        # Datei als Binärdaten
+        content = output.getvalue()  # Entfernt base64 Encoding
+        
+        try:
+            # Versuche existierende Datei zu aktualisieren
+            contents = repo.get_contents(file_name)
+            repo.update_file(
+                file_name,
+                f"Update translation template: {description}",
+                content,  # Direkte Binärdaten
+                contents.sha,
+                branch="main"  # Sicherstellen, dass der Branch korrekt ist
+            )
+        except:
+            # Wenn Datei nicht existiert, neue erstellen
+            repo.create_file(
+                file_name,
+                f"Add translation template: {description}",
+                content,
+                branch="main"  # Sicherstellen, dass der Branch korrekt ist
+            )
+        return True
+    except Exception as e:
+        st.error(f"Fehler beim Speichern der Vorlage: {str(e)}")
+        return False
+
+def load_templates_from_github():
+    """
+    Lädt verfügbare Übersetzungsvorlagen von GitHub
+    """
+    try:
+        g = Github(st.secrets["github"]["token"])
+        repo = g.get_repo(st.secrets["github"]["repo"])
+        templates = []
+        
+        try:
+            # Prüfe ob templates Verzeichnis existiert
+            contents = repo.get_contents("templates")
+        except Exception as e:
+            # Wenn nicht, erstelle es
+            repo.create_file(
+                "templates/README.md",
+                "Initialize templates directory",
+                "# Translation Templates\nThis directory contains translation templates."
+            )
+            contents = repo.get_contents("templates")
+            
+        for content in contents:
+            if content.name.endswith('.xlsx'):
+                templates.append({
+                    'name': content.name.replace('.xlsx', '').replace('_', ' ').title(),
+                    'path': content.path
+                })
+        return templates
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Vorlagen: {str(e)}")
+        return []
