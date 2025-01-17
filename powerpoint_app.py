@@ -9,10 +9,6 @@ from html import escape
 
 def powerpoint_app():
     # Seitenkonfiguration
-    st.set_page_config(
-    page_title="BonsAI PPTX Tool",
-    layout="wide"
-    )
     # Titel der App
     st.title("BonsAI PowerPoint Sprachprüfung und Korrektur")
 
