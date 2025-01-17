@@ -80,8 +80,8 @@ def selection_page():
                 height: 150px;
                 width: 100%;
                 font-size: 18px;
-                color: #3c3c3c; /* Corrected color format */
-                border-radius: 15px; /* Rounded corners */
+                color: #3c3c3c;
+                border-radius: 15px;
             }}
             </style>
             """,
@@ -100,8 +100,8 @@ def selection_page():
                 height: 150px;
                 width: 100%;
                 font-size: 18px;
-                color: #3c3c3c; /* Corrected color format */
-                border-radius: 15px; /* Rounded corners */
+                color: #3c3c3c;
+                border-radius: 15px;
             }}
             </style>
             """,
@@ -111,6 +111,29 @@ def selection_page():
             "**KI-Matching App**\n\n (Hilft dir dabei, Texte zwischen einer Rogator-Umfrageexport-Datei und einer Übersetzungsdatei abzugleichen und die passenden Übersetzungen zu finden)",
             on_click=lambda: select_app("matching"),
             key="matching_button",
+        )
+
+    # Dritte Zeile mit einem Button
+    col6, col7, col8 = st.columns([1, 10, 1])
+    with col7:
+        st.markdown(
+            f"""
+            <style>
+            div.stButton > button:first-child {{
+                height: 150px;
+                width: 100%;
+                font-size: 18px;
+                color: #3c3c3c;
+                border-radius: 15px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button(
+            "**PowerPoint Übersetzer**\n\n(Überprüft und korrigiert die Sprache in PowerPoint-Präsentationen)",
+            on_click=lambda: select_app("powerpoint"),
+            key="powerpoint_button",
         )
 def select_app(app_name):
     st.session_state.app_selected = app_name
