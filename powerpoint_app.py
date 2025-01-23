@@ -6,6 +6,11 @@ import os
 from pathlib import Path
 import difflib
 from html import escape
+from docx import Document
+from io import BytesIO
+import re
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 def powerpoint_app():
     # Seitenkonfiguration
@@ -52,13 +57,29 @@ def powerpoint_app():
         
         for slide_number, slide in enumerate(prs.slides, 1):
             for shape in slide.shapes:
+                # Überprüfe die Position des Shapes
                 if hasattr(shape, "text") and shape.text.strip():
-                    texts.append({
-                        "slide_number": slide_number,
-                        "original_text": shape.text.strip(),
-                        "corrected_text": "",
-                        "status": "ausstehend"
-                    })
+                    try:
+                        # Ignoriere Shapes am oberen und unteren Rand
+                        if hasattr(shape, "top") and hasattr(shape, "height"):
+                            # Typische PowerPoint-Folie ist 7200000 EMUs hoch
+                            slide_height = 7200000  # Standard PowerPoint Höhe
+                            shape_top = shape.top
+                            shape_bottom = shape.top + shape.height
+                            
+                            # Ignoriere obere 15% und untere 15% der Folie
+                            if (shape_top > slide_height * 0.15 and 
+                                shape_bottom < slide_height * 0.85):
+                                texts.append({
+                                    "slide_number": slide_number,
+                                    "original_text": shape.text.strip(),
+                                    "corrected_text": "",
+                                    "status": "ausstehend"
+                                })
+                    except AttributeError:
+                        # Falls die Position nicht ausgelesen werden kann, 
+                        # ignoriere dieses Shape
+                        continue
         
         return pd.DataFrame(texts)
 
@@ -217,3 +238,140 @@ def powerpoint_app():
             with col3:
                 diff_html = create_diff_html(row['original_text'], corrected)
                 st.markdown(diff_html, unsafe_allow_html=True)
+
+        def create_word_document():
+            def clean_text_for_word(text):
+                if not isinstance(text, str):
+                    return ""
+                # Entferne Steuerzeichen, aber behalte Zeilenumbrüche
+                text = ''.join(char for char in text if char == '\n' or (ord(char) >= 32 and ord(char) != 127))
+                # Ersetze mehrfache Zeilenumbrüche durch maximal zwei
+                text = re.sub(r'\n{3,}', '\n\n', text)
+                return text
+
+            def create_word_diff(original, corrected):
+                if corrected == '-' or original == corrected:
+                    return "Keine Änderungen"
+                
+                def split_into_words(text):
+                    # Ersetze Zeilenumbrüche mit speziellen Markierungen
+                    lines = text.split('\n')
+                    result = []
+                    for line in lines:
+                        # Füge die Wörter der Zeile hinzu
+                        result.extend(line.split())
+                        # Füge einen speziellen Marker für Zeilenumbrüche hinzu
+                        result.append('\n')
+                    return result[:-1]  # Entferne den letzten Zeilenumbruch
+                
+                original_words = split_into_words(original)
+                corrected_words = split_into_words(corrected)
+                matcher = difflib.SequenceMatcher(None, original_words, corrected_words)
+                
+                result = []
+                for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                    if tag == 'replace':
+                        result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                        result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
+                    elif tag == 'delete':
+                        result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                    elif tag == 'insert':
+                        result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
+                    elif tag == 'equal':
+                        result.append(('equal', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                return result
+
+            try:
+                # Erstelle Word-Dokument
+                doc = Document()
+                doc.add_heading('Korrekturübersicht PowerPoint-Präsentation', 0)
+                
+                # Erstelle Tabellenstil für den Header
+                header_style = doc.styles.add_style('HeaderStyle', 1)
+                header_style.font.bold = True
+                header_style.font.size = Pt(11)
+                
+                # Füge Spaltenüberschriften hinzu
+                table = doc.add_table(rows=1, cols=3)
+                table.style = 'Table Grid'
+                table.autofit = False
+                # Setze Spaltenbreiten (insgesamt 5000 Twips = 100%)
+                for i, width in enumerate([1667, 1667, 1666]):  # ca. 33% pro Spalte
+                    table.columns[i].width = width
+                
+                # Füge Header hinzu
+                header_cells = table.rows[0].cells
+                header_cells[0].text = "Originaltext"
+                header_cells[1].text = "Korrigierter Text"
+                header_cells[2].text = "Änderungen"
+                
+                # Style Header
+                for cell in header_cells:
+                    cell.paragraphs[0].style = header_style
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Für jede Folie
+                for _, row in st.session_state.corrections_df.iterrows():
+                    # Füge neue Zeile für Folientitel hinzu
+                    title_row = table.add_row()
+                    title_cell = title_row.cells[0]
+                    title_cell.merge(title_row.cells[-1])
+                    title_cell.text = f"Folie {row['slide_number']}"
+                    title_cell.paragraphs[0].style = header_style
+                    
+                    # Füge Inhaltszeile hinzu
+                    content_row = table.add_row()
+                    cells = content_row.cells
+                    
+                    # Originaltext
+                    cells[0].text = clean_text_for_word(row['original_text'])
+                    
+                    # Korrigierter Text
+                    cells[1].text = clean_text_for_word(row['corrected_text'])
+                    
+                    # Änderungen mit Farbmarkierung
+                    diff_paragraph = cells[2].paragraphs[0]
+                    diff_results = create_word_diff(
+                        clean_text_for_word(row['original_text']),
+                        clean_text_for_word(row['corrected_text'])
+                    )
+                    
+                    if isinstance(diff_results, str):
+                        diff_paragraph.add_run(diff_results)
+                    else:
+                        for diff_type, text in diff_results:
+                            # Teile den Text an Zeilenumbrüchen
+                            text_parts = text.split('\n')
+                            for i, part in enumerate(text_parts):
+                                if part.strip():  # Wenn der Teil nicht leer ist
+                                    run = diff_paragraph.add_run(part)
+                                    if diff_type == 'delete':
+                                        run.font.color.rgb = RGBColor(198, 40, 40)  # Rot
+                                        run.font.strike = True
+                                    elif diff_type == 'insert':
+                                        run.font.color.rgb = RGBColor(46, 125, 50)  # Grün
+                                # Füge Zeilenumbruch hinzu, außer beim letzten Teil
+                                if i < len(text_parts) - 1:
+                                    diff_paragraph.add_run('\n')
+                
+                # Speichere das Dokument in einem BytesIO-Objekt
+                doc_buffer = BytesIO()
+                doc.save(doc_buffer)
+                doc_buffer.seek(0)
+                return doc_buffer
+                
+            except Exception as e:
+                st.error(f"Fehler beim Erstellen des Word-Dokuments: {str(e)}")
+                return None
+
+        # Word-Export Button
+        if st.button("Word-Dokument erstellen"):
+            doc_buffer = create_word_document()
+            if doc_buffer is not None:
+                st.download_button(
+                    label="Word-Dokument herunterladen",
+                    data=doc_buffer,
+                    file_name="powerpoint_korrekturen.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key="word_download"  # Eindeutiger Key für den Download-Button
+                )
