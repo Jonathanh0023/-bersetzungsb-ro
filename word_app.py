@@ -79,26 +79,31 @@ def word_app():
 
         def process_table(table):
             """Verarbeitet eine Tabelle und gibt den formatierten Text zurück."""
+            # Prüfe ob die Tabelle leer ist
+            if not table.rows:
+                return ""
+            
             table_text = []
             table_text.append("")  # Leerzeile vor der Tabelle
             
+            # Verarbeite jede Zeile nur einmal
+            seen_rows = set()  # Speichert bereits gesehene Zeileninhalte
+            
             for row in table.rows:
+                # Extrahiere den Text aus jeder Zelle
                 row_cells = []
                 for cell in row.cells:
-                    # Sammle allen Text aus der Zelle
-                    cell_text = []
-                    for paragraph in cell.paragraphs:
-                        text = paragraph.text.strip()
-                        if text:
-                            cell_text.append(text)
-                    
-                    # Füge den Zellen-Text zusammen
-                    cell_content = " ".join(cell_text)
-                    row_cells.append(cell_content)  # Auch leere Zellen beibehalten für Struktur
+                    # Nehme nur den ersten Paragraphen jeder Zelle
+                    cell_text = cell.paragraphs[0].text.strip() if cell.paragraphs else ""
+                    row_cells.append(cell_text)
                 
-                # Füge die Zellen mit Separator zusammen
-                row_text = " | ".join(row_cells)
-                if any(cell.strip() for cell in row_cells):  # Nur Zeilen mit Inhalt
+                # Erstelle einen eindeutigen Schlüssel für diese Zeile
+                row_key = "||".join(row_cells)
+                
+                # Füge die Zeile nur hinzu, wenn wir sie noch nicht gesehen haben
+                if row_key not in seen_rows and any(cell.strip() for cell in row_cells):
+                    seen_rows.add(row_key)
+                    row_text = " | ".join(row_cells)
                     table_text.append(row_text)
             
             table_text.append("")  # Leerzeile nach der Tabelle
