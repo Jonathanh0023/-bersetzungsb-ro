@@ -66,19 +66,22 @@ def word_app():
         page_number = 1
         estimated_chars_per_page = 1500  # Ungefähre Anzahl von Zeichen pro Seite
         current_chars = 0
-        
+
         def process_paragraph(paragraph):
             """Verarbeitet einen einzelnen Paragraphen und gibt den formatierten Text zurück."""
-            return paragraph.text.strip()
+            text = paragraph.text.strip()
+            if text:
+                # Füge Leerzeilen um Überschriften ein
+                if paragraph.style.name.startswith('Heading'):
+                    return f"\n{text}\n"
+                return text
+            return ""
 
         def process_table(table):
             """Verarbeitet eine Tabelle und gibt den formatierten Text zurück."""
             table_text = []
+            table_text.append("")  # Leerzeile vor der Tabelle
             
-            # Füge eine Leerzeile vor der Tabelle ein
-            table_text.append("")
-            
-            # Verarbeite jede Zeile
             for row in table.rows:
                 row_cells = []
                 for cell in row.cells:
@@ -91,23 +94,20 @@ def word_app():
                     
                     # Füge den Zellen-Text zusammen
                     cell_content = " ".join(cell_text)
-                    if cell_content:  # Nur nicht-leere Zellen hinzufügen
-                        row_cells.append(cell_content)
+                    row_cells.append(cell_content)  # Auch leere Zellen beibehalten für Struktur
                 
-                # Füge die Zellen mit einem vernünftigen Separator zusammen
-                if row_cells:  # Nur nicht-leere Zeilen hinzufügen
-                    row_text = " | ".join(row_cells)
+                # Füge die Zellen mit Separator zusammen
+                row_text = " | ".join(row_cells)
+                if any(cell.strip() for cell in row_cells):  # Nur Zeilen mit Inhalt
                     table_text.append(row_text)
             
-            # Füge eine Leerzeile nach der Tabelle ein
-            table_text.append("")
-            
-            # Verbinde alle Zeilen mit Zeilenumbrüchen
+            table_text.append("")  # Leerzeile nach der Tabelle
             return "\n".join(table_text)
 
         def add_to_current_page(text):
             """Fügt Text zur aktuellen Seite hinzu und erstellt bei Bedarf eine neue Seite."""
-            nonlocal current_chars, page_number
+            nonlocal current_chars, page_number, current_page_text
+            
             if text.strip():
                 current_chars += len(text)
                 current_page_text.append(text)
@@ -115,53 +115,66 @@ def word_app():
                 # Wenn die geschätzte Seitenlänge erreicht ist
                 if current_chars >= estimated_chars_per_page:
                     # Füge die aktuelle Seite zum DataFrame hinzu
-                    data.append({
-                        "page_number": page_number,
-                        "original_text": "\n\n".join(current_page_text),
-                        "corrected_text": "",
-                        "status": "ausstehend"
-                    })
+                    combined_text = "\n".join(current_page_text).strip()
+                    if combined_text:
+                        data.append({
+                            "page_number": page_number,
+                            "original_text": combined_text,
+                            "corrected_text": "",
+                            "status": "ausstehend"
+                        })
                     # Setze Variablen für die nächste Seite zurück
-                    current_page_text.clear()
+                    current_page_text = []
                     current_chars = 0
                     page_number += 1
 
         # Verarbeite alle Elemente im Dokument
         for element in doc.element.body:
             if element.tag.endswith('p'):  # Paragraph
-                paragraph = doc.paragraphs[len(data) + len(current_page_text)]
-                text = process_paragraph(paragraph)
-                if text:
-                    add_to_current_page(text)
+                try:
+                    # Finde den entsprechenden Paragraph im Dokument
+                    para_index = list(doc.element.body).index(element)
+                    paragraph = doc.paragraphs[para_index]
+                    text = process_paragraph(paragraph)
+                    if text:
+                        add_to_current_page(text)
+                except IndexError:
+                    continue
             
             elif element.tag.endswith('tbl'):  # Table
-                table_index = sum(1 for e in doc.element.body[:doc.element.body.index(element)]
-                                if e.tag.endswith('tbl'))
-                table = doc.tables[table_index]
-                table_text = process_table(table)
-                if table_text:
-                    add_to_current_page(table_text)
-            
-            # Hier können weitere Elementtypen hinzugefügt werden
-            # z.B. Textboxen, Shapes, etc.
-        
+                try:
+                    # Finde den Index der Tabelle
+                    table_index = sum(1 for e in doc.element.body[:doc.element.body.index(element)]
+                                    if e.tag.endswith('tbl'))
+                    table = doc.tables[table_index]
+                    table_text = process_table(table)
+                    if table_text:
+                        add_to_current_page(table_text)
+                except IndexError:
+                    continue
+
         # Füge die letzte Seite hinzu, falls noch Text übrig ist
         if current_page_text:
-            data.append({
-                "page_number": page_number,
-                "original_text": "\n\n".join(current_page_text),
-                "corrected_text": "",
-                "status": "ausstehend"
-            })
-        
+            combined_text = "\n".join(current_page_text).strip()
+            if combined_text:
+                data.append({
+                    "page_number": page_number,
+                    "original_text": combined_text,
+                    "corrected_text": "",
+                    "status": "ausstehend"
+                })
+
         # Wenn keine Daten gefunden wurden
         if not data:
             st.warning("Keine Texte im Dokument gefunden.")
             return pd.DataFrame(columns=["page_number", "original_text", "corrected_text", "status"])
-        
+
         df = pd.DataFrame(data)
         
-        # Logging für Debugging (mit st.info statt st.debug)
+        # Entferne doppelte Leerzeilen
+        df['original_text'] = df['original_text'].apply(lambda x: re.sub(r'\n{3,}', '\n\n', x))
+        
+        # Logging
         st.info(f"Extrahierte Seiten: {len(df)}\n"
                 f"Gesamtzeichen: {sum(len(text) for text in df['original_text'])}")
         
