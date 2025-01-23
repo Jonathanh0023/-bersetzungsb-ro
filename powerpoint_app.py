@@ -36,10 +36,18 @@ def powerpoint_app():
             # Speichere die Datei im Session State
             st.session_state.uploaded_file = uploaded_file
         
+        # Modus-Auswahl
+        mode = st.selectbox(
+            "Modus",
+            options=["Editor", "Übersetzer"],
+            index=0,
+            help="Editor: Korrigiert Texte in der gewählten Sprache\nÜbersetzer: Übersetzt Texte in die gewählte Sprache"
+        )
+        
         # Sprachauswahl
         target_language = st.selectbox(
             "Zielsprache",
-            options=["US English", "UK English", "Deutsch"],
+            options=["US English", "UK English", "Deutsch", "Französisch"],
             index=0
         )
 
@@ -86,7 +94,7 @@ def powerpoint_app():
     def check_text_with_gpt(text):
         try:
             # Erstelle ein sprachspezifisches Prompt
-            prompt_templates = {
+            editor_templates = {
                 "US English": ("You are a professional editor specializing in US English. Please review and correct the following text, focusing on:\n"
                             "1. Grammar and syntax according to US English rules\n"
                             "2. Spelling using US English conventions\n"
@@ -112,10 +120,59 @@ def powerpoint_app():
                         "4. Verbesserung der Formulierungen unter Beibehaltung der ursprünglichen Bedeutung\n"
                         "5. Sicherstellung einer einheitlichen deutschen Ausdrucksweise\n\n"
                         "Wichtig: Bewahre alle Formatierungen, Zeilenumbrüche, Schriftgrößen und Textauszeichnungen (fett, kursiv, etc.). Korrigiere ausschließlich die oben genannten sprachlichen Aspekte.\n\n"
-                        "Falls der Text zu kurz ist oder keine Korrekturen benötigt, antworte mit einem einzelnen Bindestrich '-'")
+                        "Falls der Text zu kurz ist oder keine Korrekturen benötigt, antworte mit einem einzelnen Bindestrich '-'"),
+
+                "Französisch": ("Tu es un éditeur professionnel spécialisé en français. Examine et corrige le texte suivant en te concentrant sur:\n"
+                            "1. La grammaire et la syntaxe selon les règles du français\n"
+                            "2. L'orthographe selon les conventions françaises actuelles\n"
+                            "3. La ponctuation selon les règles françaises\n"
+                            "4. L'amélioration des formulations tout en conservant le sens original\n"
+                            "5. L'assurance d'une expression française cohérente et élégante\n\n"
+                            "Important: Conserve tous les formatages, sauts de ligne, tailles de police et styles de texte (gras, italique, etc.). Corrige uniquement les aspects linguistiques mentionnés ci-dessus.\n\n"
+                            "Si le texte est trop court ou ne nécessite aucune correction, réponds avec un simple tiret '-'")
             }
-            
-            system_prompt = prompt_templates[target_language]
+
+            translator_templates = {
+                "US English": ("You are a professional translator. Translate the following text into US English.\n\n"
+                            "Important guidelines:\n"
+                            "1. Maintain the original meaning and tone\n"
+                            "2. Use US English spelling and expressions\n"
+                            "3. Preserve all formatting, line breaks, and text styling (bold, italic, etc.)\n"
+                            "4. Ensure natural, fluent language appropriate for the context\n"
+                            "5. Keep any technical terms or proper names as they are unless there's a standard English equivalent\n\n"
+                            "If the text is too short or is already in English, respond with a single hyphen '-'"),
+
+                "UK English": ("You are a professional translator. Translate the following text into British English.\n\n"
+                            "Important guidelines:\n"
+                            "1. Maintain the original meaning and tone\n"
+                            "2. Use British English spelling and expressions\n"
+                            "3. Preserve all formatting, line breaks, and text styling (bold, italic, etc.)\n"
+                            "4. Ensure natural, fluent language appropriate for the context\n"
+                            "5. Keep any technical terms or proper names as they are unless there's a standard English equivalent\n\n"
+                            "If the text is too short or is already in English, respond with a single hyphen '-'"),
+
+                "Deutsch": ("Du bist ein professioneller Übersetzer. Übersetze den folgenden Text ins Deutsche.\n\n"
+                        "Wichtige Richtlinien:\n"
+                        "1. Bewahre die ursprüngliche Bedeutung und den Ton\n"
+                        "2. Verwende natürliches, zeitgemäßes Deutsch\n"
+                        "3. Behalte alle Formatierungen, Zeilenumbrüche und Textauszeichnungen (fett, kursiv, etc.) bei\n"
+                        "4. Stelle eine flüssige, dem Kontext angemessene Sprache sicher\n"
+                        "5. Behalte Fachbegriffe oder Eigennamen bei, außer es gibt eine standardisierte deutsche Entsprechung\n\n"
+                        "Falls der Text zu kurz ist oder bereits auf Deutsch ist, antworte mit einem einzelnen Bindestrich '-'"),
+
+                "Französisch": ("Tu es un traducteur professionnel. Traduis le texte suivant en français.\n\n"
+                            "Directives importantes:\n"
+                            "1. Conserve le sens et le ton d'origine\n"
+                            "2. Utilise un français naturel et contemporain\n"
+                            "3. Préserve tous les formatages, sauts de ligne et styles de texte (gras, italique, etc.)\n"
+                            "4. Assure un langage fluide et approprié au contexte\n"
+                            "5. Conserve les termes techniques ou noms propres sauf s'il existe un équivalent français standard\n\n"
+                            "Si le texte est trop court ou déjà en français, réponds avec un simple tiret '-'")
+            }
+
+            # Wähle das entsprechende Template basierend auf Modus und Sprache
+            templates = editor_templates if mode == "Editor" else translator_templates
+            system_prompt = templates[target_language]
             
             response = client.chat.completions.create(
                 model="gpt-4o-mini",

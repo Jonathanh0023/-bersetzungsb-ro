@@ -113,9 +113,9 @@ def selection_page():
             key="matching_button",
         )
 
-    # Dritte Zeile mit einem Button
-    col6, col7, col8 = st.columns([1, 10, 1])
-    with col7:
+    # Dritte Zeile mit zwei Buttons für PowerPoint und Word
+    col6, col7 = st.columns(2)
+    with col6:
         st.markdown(
             f"""
             <style>
@@ -135,6 +135,28 @@ def selection_page():
             on_click=lambda: select_app("powerpoint"),
             key="powerpoint_button",
         )
+    
+    with col7:
+        st.markdown(
+            f"""
+            <style>
+            div.stButton > button:first-child {{
+                height: 150px;
+                width: 100%;
+                font-size: 18px;
+                color: #3c3c3c;
+                border-radius: 15px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button(
+            "**Word Übersetzer**\n\n(Überprüft und korrigiert die Sprache in Word-Dokumenten)",
+            on_click=lambda: select_app("word"),
+            key="word_button",
+        )
+
 def select_app(app_name):
     st.session_state.app_selected = app_name
 
