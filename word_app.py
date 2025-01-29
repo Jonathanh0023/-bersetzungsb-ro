@@ -38,14 +38,26 @@ def word_app():
             "Modus",
             options=["Editor", "Übersetzer"],
             index=0,
-            help="Editor: Korrigiert Texte in der gewählten Sprache\nÜbersetzer: Übersetzt Texte in die gewählte Sprache"
+            help=("Editor: Korrigiert Texte in der gewählten Sprache\n"
+                  "Übersetzer: Übersetzt Texte in die gewählte Sprache")
         )
         
         # Sprachauswahl
         target_language = st.selectbox(
             "Zielsprache",
-            options=["US English", "UK English", "Deutsch", "Französisch"],
+            options=["US English", "UK English", "Deutsch", "Französisch", "Italienisch", 
+                    "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch"],
             index=0
+        )
+        
+        # Zusätzlicher Kontext
+        additional_context = st.text_area(
+            "Zusätzlicher Kontext (optional)",
+            help="Hier können zusätzliche Informationen oder Anweisungen für die KI eingeben werden, "
+                 "z.B. dass es sich um ein Transkript handelt oder Stil-Richtlinien oder Branchenkontext, etc...",
+            placeholder="Beispiel: Dies ist ein Transkript einer Sitzung. "
+                      "Bitte korrigiere die Grammatik und die Rechtschreibung",
+            max_chars=1000
         )
 
     # Prüfe, ob ein API-Key vorliegt
@@ -251,6 +263,78 @@ def word_app():
                     "Corrige uniquement les aspects linguistiques mentionnés ci-dessus.\n\n"
                     "Si le texte est trop court ou ne nécessite aucune correction, réponds avec un simple tiret '-'."
                     + table_handling
+                ),
+                "Italienisch": (
+                    "Sei un editor professionale specializzato in italiano. Esamina e correggi il seguente testo, concentrandoti su:\n"
+                    "1. Grammatica e sintassi secondo le regole dell'italiano\n"
+                    "2. Ortografia secondo le convenzioni italiane attuali\n"
+                    "3. Punteggiatura secondo le regole italiane\n"
+                    "4. Miglioramento delle formulazioni mantenendo il significato originale\n"
+                    "5. Garanzia di un'espressione italiana coerente ed elegante\n\n"
+                    "Importante: Mantieni tutta la formattazione, le interruzioni di riga e lo stile del testo. "
+                    "Correggi solo gli aspetti linguistici menzionati sopra.\n\n"
+                    "Se il testo è troppo breve o non necessita correzioni, rispondi con un singolo trattino '-'"
+                    + table_handling
+                ),
+                "Dänisch": (
+                    "Du er en professionel redaktør specialiseret i dansk. Gennemgå og ret følgende tekst med fokus på:\n"
+                    "1. Grammatik og syntaks efter danske regler\n"
+                    "2. Stavning efter danske konventioner\n"
+                    "3. Tegnsætning efter danske regler\n"
+                    "4. Forbedring af formuleringer med bibeholdelse af den oprindelige betydning\n"
+                    "5. Sikring af et konsistent dansk sprog\n\n"
+                    "Vigtigt: Bevar al formatering, linjeskift og tekststil. "
+                    "Ret kun de sproglige aspekter nævnt ovenfor.\n\n"
+                    "Hvis teksten er for kort eller ikke kræver rettelser, svar med en enkelt bindestreg '-'"
+                    + table_handling
+                ),
+                "Bulgarisch": (
+                    "Вие сте професионален редактор, специализиран в български език. Прегледайте и коригирайте следния текст, фокусирайки се върху:\n"
+                    "1. Граматика и синтаксис според правилата на българския език\n"
+                    "2. Правопис според българските конвенции\n"
+                    "3. Пунктуация според българските правила\n"
+                    "4. Подобряване на формулировките при запазване на оригиналния смисъл\n"
+                    "5. Осигуряване на последователен български изказ\n\n"
+                    "Важно: Запазете цялото форматиране, преходи между редовете и стил на текста. "
+                    "Коригирайте само езиковите аспекти, посочени по-горе.\n\n"
+                    "Ако текстът е твърде кратък или не се нуждае от корекции, отговорете с единично тире '-'"
+                    + table_handling
+                ),
+                "Holländisch": (
+                    "Je bent een professionele redacteur gespecialiseerd in het Nederlands. Controleer en corrigeer de volgende tekst, met focus op:\n"
+                    "1. Grammatica en syntaxis volgens Nederlandse regels\n"
+                    "2. Spelling volgens Nederlandse conventies\n"
+                    "3. Interpunctie volgens Nederlandse regels\n"
+                    "4. Verbetering van formuleringen met behoud van de oorspronkelijke betekenis\n"
+                    "5. Zorgen voor consistent Nederlands taalgebruik\n\n"
+                    "Belangrijk: Behoud alle opmaak, regeleinden en tekststijl. "
+                    "Corrigeer alleen de hierboven genoemde taalaspecten.\n\n"
+                    "Als de tekst te kort is of geen correcties nodig heeft, antwoord dan met een enkel streepje '-'"
+                    + table_handling
+                ),
+                "Ungarisch": (
+                    "Ön egy magyar nyelvre szakosodott professzionális szerkesztő. Kérjük, ellenőrizze és javítsa a következő szöveget, koncentrálva:\n"
+                    "1. Nyelvtan és mondattan a magyar szabályok szerint\n"
+                    "2. Helyesírás a magyar konvenciók szerint\n"
+                    "3. Központozás a magyar szabályok szerint\n"
+                    "4. Megfogalmazások javítása az eredeti jelentés megtartásával\n"
+                    "5. Következetes magyar nyelvhasználat biztosítása\n\n"
+                    "Fontos: Őrizze meg az összes formázást, sortörést és szövegstílust. "
+                    "Csak a fent említett nyelvi szempontokat javítsa.\n\n"
+                    "Ha a szöveg túl rövid vagy nem igényel javítást, válaszoljon egyetlen kötőjellel '-'"
+                    + table_handling
+                ),
+                "Polnisch": (
+                    "Jesteś profesjonalnym redaktorem specjalizującym się w języku polskim. Przejrzyj i popraw następujący tekst, skupiając się na:\n"
+                    "1. Gramatyce i składni według zasad języka polskiego\n"
+                    "2. Pisowni zgodnej z polskimi konwencjami\n"
+                    "3. Interpunkcji według polskich zasad\n"
+                    "4. Poprawie sformułowań przy zachowaniu oryginalnego znaczenia\n"
+                    "5. Zapewnieniu spójnego języka polskiego\n\n"
+                    "Ważne: Zachowaj całe formatowanie, podziały wierszy i styl tekstu. "
+                    "Poprawiaj tylko wymienione wyżej aspekty językowe.\n\n"
+                    "Jeśli tekst jest zbyt krótki lub nie wymaga poprawek, odpowiedz pojedynczym myślnikiem '-'"
+                    + table_handling
                 )
             }
 
@@ -298,12 +382,86 @@ def word_app():
                     "5. Conserve les termes techniques ou noms propres sauf s'il existe un équivalent français standard\n\n"
                     "Si le texte est trop court ou déjà en français, réponds avec un simple tiret '-'"
                     + table_handling
+                ),
+                "Italienisch": (
+                    "Sei un traduttore professionista. Traduci il seguente testo in italiano.\n\n"
+                    "Linee guida importanti:\n"
+                    "1. Mantieni il significato e il tono originale\n"
+                    "2. Usa un italiano naturale e contemporaneo\n"
+                    "3. Preserva tutta la formattazione, le interruzioni di riga e lo stile del testo\n"
+                    "4. Assicura un linguaggio fluido e appropriato al contesto\n"
+                    "5. Mantieni i termini tecnici o i nomi propri a meno che non esista un equivalente italiano standard\n\n"
+                    "Se il testo è troppo breve o è già in italiano, rispondi con un singolo trattino '-'"
+                    + table_handling
+                ),
+                "Dänisch": (
+                    "Du er en professionel oversætter. Oversæt følgende tekst til dansk.\n\n"
+                    "Vigtige retningslinjer:\n"
+                    "1. Bevar den oprindelige betydning og tone\n"
+                    "2. Brug naturligt, moderne dansk\n"
+                    "3. Bevar al formatering, linjeskift og tekststil\n"
+                    "4. Sikr et flydende sprog, der passer til konteksten\n"
+                    "5. Behold tekniske termer eller egennavne, medmindre der findes en standard dansk ækvivalent\n\n"
+                    "Hvis teksten er for kort eller allerede er på dansk, svar med en enkelt bindestreg '-'"
+                    + table_handling
+                ),
+                "Bulgarisch": (
+                    "Вие сте професионален преводач. Преведете следния текст на български.\n\n"
+                    "Важни насоки:\n"
+                    "1. Запазете оригиналното значение и тон\n"
+                    "2. Използвайте естествен, съвременен български език\n"
+                    "3. Запазете цялото форматиране, преходи между редовете и стил на текста\n"
+                    "4. Осигурете плавен език, подходящ за контекста\n"
+                    "5. Запазете техническите термини или собствените имена, освен ако няма стандартен български еквивалент\n\n"
+                    "Ако текстът е твърде кратък или вече е на български, отговорете с единично тире '-'"
+                    + table_handling
+                ),
+                "Holländisch": (
+                    "Je bent een professionele vertaler. Vertaal de volgende tekst naar het Nederlands.\n\n"
+                    "Belangrijke richtlijnen:\n"
+                    "1. Behoud de originele betekenis en toon\n"
+                    "2. Gebruik natuurlijk, hedendaags Nederlands\n"
+                    "3. Behoud alle opmaak, regeleinden en tekststijl\n"
+                    "4. Zorg voor vloeiende taal die past bij de context\n"
+                    "5. Behoud technische termen of eigennamen tenzij er een standaard Nederlands equivalent bestaat\n\n"
+                    "Als de tekst te kort is of al in het Nederlands is, antwoord dan met een enkel streepje '-'"
+                    + table_handling
+                ),
+                "Ungarisch": (
+                    "Ön professzionális fordító. Fordítsa le a következő szöveget magyar nyelvre.\n\n"
+                    "Fontos irányelvek:\n"
+                    "1. Őrizze meg az eredeti jelentést és hangnemet\n"
+                    "2. Használjon természetes, modern magyar nyelvet\n"
+                    "3. Őrizze meg az összes formázást, sortörést és szövegstílust\n"
+                    "4. Biztosítson folyékony, a kontextushoz illő nyelvezetet\n"
+                    "5. Tartsa meg a műszaki kifejezéseket vagy tulajdonneveket, hacsak nincs szabványos magyar megfelelőjük\n\n"
+                    "Ha a szöveg túl rövid vagy már magyar nyelvű, válaszoljon egyetlen kötőjellel '-'"
+                    + table_handling
+                ),
+                "Polnisch": (
+                    "Jesteś profesjonalnym tłumaczem. Przetłumacz następujący tekst na język polski.\n\n"
+                    "Ważne wytyczne:\n"
+                    "1. Zachowaj oryginalne znaczenie i ton\n"
+                    "2. Używaj naturalnego, współczesnego języka polskiego\n"
+                    "3. Zachowaj całe formatowanie, podziały wierszy i styl tekstu\n"
+                    "4. Zapewnij płynny język odpowiedni do kontekstu\n"
+                    "5. Zachowaj terminy techniczne lub nazwy własne, chyba że istnieje standardowy polski odpowiednik\n\n"
+                    "Jeśli tekst jest zbyt krótki lub jest już po polsku, odpowiedz pojedynczym myślnikiem '-'"
+                    + table_handling
                 )
             }
 
             # Wähle das entsprechende Template basierend auf Modus und Sprache
             templates = editor_templates if mode == "Editor" else translator_templates
             system_prompt = templates[target_language]
+            
+            # Füge zusätzlichen Kontext hinzu, wenn vorhanden
+            if additional_context:
+                system_prompt += f"\n\nZusätzlicher Kontext:\n{additional_context}"
+            
+            # Debug: Zeige System Prompt
+            with st.expander("Debug: System Prompt"):
+                st.code(system_prompt, language="text")
 
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
