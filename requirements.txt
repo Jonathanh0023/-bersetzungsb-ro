@@ -7,4 +7,5 @@ openpyxl
 PyGithub
 python-pptx
 python-docx
-
+replicate
+requests
