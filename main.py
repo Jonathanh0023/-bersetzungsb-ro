@@ -7,6 +7,7 @@ from key_account_app import key_account_app
 from matching_app import matching_app
 from powerpoint_app import powerpoint_app
 from word_app import word_app  # Neuer Import für die Word-App
+from transkript import main as transkript_app  # Neuer Import für die Transkript-App
 
 def main():
     # Setze die Seitenkonfiguration als ersten Streamlit-Befehl
@@ -32,10 +33,12 @@ def main():
             allgemeine_app()
         elif st.session_state.app_selected == "matching":
             matching_app()
-        elif st.session_state.app_selected == "powerpoint":  # Neue Bedingung
+        elif st.session_state.app_selected == "powerpoint":
             powerpoint_app()
-        elif st.session_state.app_selected == "word":  # Neue Bedingung
+        elif st.session_state.app_selected == "word":
             word_app()
+        elif st.session_state.app_selected == "transkript":  # Neue Bedingung
+            transkript_app()
         else:
             st.error("Unbekannte Anwendung ausgewählt")
 
