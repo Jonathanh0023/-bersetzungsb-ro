@@ -175,7 +175,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "**Audio-Transkription**\n\n(Konvertiert Audio- und Videodateien in Text)",
+            "**Audio-Transkription**\n\n(Konvertiert Audio- und Videodateien in Text. Kann Trankripte in Originalsprache oder auf Englisch erstellen)",
             on_click=lambda: select_app("transkript"),
             key="transkript_button",
         )
