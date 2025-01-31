@@ -157,9 +157,9 @@ def selection_page():
             key="word_button",
         )
 
-    # Neue Zeile für den Transkript-Button
-    col8, col9, col10 = st.columns([1, 10, 1])
-    with col9:
+    # Neue Zeile für die Transkript-Apps (nebeneinander)
+    col8, col9 = st.columns(2)
+    with col8:
         st.markdown(
             f"""
             <style>
@@ -178,6 +178,27 @@ def selection_page():
             "**Audio-Transkription**\n\n(Konvertiert Audio- und Videodateien in Text. Kann Trankripte in Originalsprache oder auf Englisch erstellen)",
             on_click=lambda: select_app("transkript"),
             key="transkript_button",
+        )
+
+    with col9:
+        st.markdown(
+            f"""
+            <style>
+            div.stButton > button:first-child {{
+                height: 150px;
+                width: 100%;
+                font-size: 18px;
+                color: #3c3c3c;
+                border-radius: 15px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button(
+            "**Word-Dokument-Verarbeitung**\n\n(Word-Dokumente können hier von der KI beliebig bearbeitet werden)",
+            on_click=lambda: select_app("transkript_verarbeitung"),
+            key="transkript_verarbeitung_button",
         )
 
 def select_app(app_name):
