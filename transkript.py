@@ -229,96 +229,174 @@ def main():
         st.warning("⚠️ Bitte gib einen gültigen API Token ein, um fortzufahren.")
         st.stop()
 
-    # Zwei Spalten erstellen für Dropdown und manuellen Input
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        language_dropdown = st.selectbox(
-            "Welche Sprache wird gesprochen?",
-            ('de', 'en', 'it', 'fr', 'es', 'pl', 'sv', 'dk', 'bu', 'nl', 'hu'),
-            index=None,
-            placeholder="Bitte wähle die Sprache",  
-        )
-    
-    with col2:
-        custom_language = st.text_input(
-            "Sprache nicht vorhanden? Hier den Ländercode eingeben:",
-            placeholder="z.B. ja für Japanisch"
-        )
-    
-    # Verwende den benutzerdefinierten Code, falls eingegeben, sonst den Dropdown-Wert
-    language = custom_language if custom_language else language_dropdown
+    # Eingabefeld für die Anzahl der Transkripte
+    num_transcripts = st.number_input("Anzahl der Transkripte:", min_value=1, value=1)
 
-    translate = st.checkbox("Transkript auf Englisch übersetzen", value=False)
-
-    num_speakers = st.number_input("Anzahl Sprecher:", min_value=1, value=2)
-    
-    # Collect speaker names
-    speaker_names = {}
-    for i in range(1, num_speakers + 1):
-        speaker_name = st.text_input(f"Name Sprecher {i} (optional):")
-        if speaker_name:
-            speaker_names[f"SPEAKER_{i-1:02}"] = speaker_name
-
-    prompt = st.text_input("Info für die KI (optional):")
-
-    user_email = st.text_input("Bitte gib deine E-Mail-Adresse ein, falls du den Downloadlink zugeschickt haben möchtest, sobald das Trankript fertig ist. Es können mehrere E-Mail-Adressen eingeben werden. Diese müssen durch Komma getrennt werden (optional):")
-
-    uploaded_file = st.file_uploader("Audio-Datei hochladen (bei mehr als 100 MB wird die Datei automatisch in mehrere Teile aufgeteilt und die Transkription mit den einzelnen Teilen erneut durchgeführt):", type=["wav", "mp3", "mp4"])
-    
-    # This will hold the direct URL
-    direct_url_input = st.empty()
-    direct_url = direct_url_input.text_input("Oder verwende einen Downloadlink zur Datei:")
-    
-    # If a file is uploaded, get its direct URL and set it to the direct URL input field
-    base_name = None
-    if uploaded_file:
-        file_size = uploaded_file.size
-        if file_size > 100 * 1024 * 1024:
-            # Datei in Teile aufteilen
-            parts = split_file(uploaded_file)
-            st.warning("""
-                Die hochgeladene Datei ist größer als 100 MB. Da der Hosting-Service eine Größenbeschränkung von 100 MB hat, 
-                wurde die Datei automatisch in mehrere Teile aufgeteilt. 
-                
-                Bitte lade alle Teile herunter und führe die Transkription mit den einzelnen Teilen erneut durch.
-                """)
+    # Container für jedes Transkript erstellen
+    for transcript_idx in range(num_transcripts):
+        with st.expander(f"Transkript {transcript_idx + 1}", expanded=True):
+            # Zwei Spalten erstellen für Dropdown und manuellen Input
+            col1, col2 = st.columns(2)
             
-            # Download-Buttons für die einzelnen Teile anbieten
-            for idx, part in enumerate(parts):
-                st.download_button(
-                    label=f"Download Teil {idx + 1}",
-                    data=part,
-                    file_name=f"{os.path.splitext(uploaded_file.name)[0]}_teil{idx + 1}{os.path.splitext(uploaded_file.name)[1]}",
-                    mime=uploaded_file.type
+            with col1:
+                language_dropdown = st.selectbox(
+                    f"Welche Sprache wird gesprochen? (Transkript {transcript_idx + 1})",
+                    ('de', 'en', 'it', 'fr', 'es', 'pl', 'sv', 'dk', 'bu', 'nl', 'hu'),
+                    index=None,
+                    placeholder="Bitte wähle die Sprache",
+                    key=f"lang_dropdown_{transcript_idx}"
                 )
-        else:
-            file_url = upload_to_hosting_service(uploaded_file)
-            base_name = os.path.splitext(uploaded_file.name)[0]
             
-            # Print the URL to console for verification
-            print("Generated Direct URL:", file_url)
-            
-            direct_url_input.text_input("Oder verwende eine URL zur Datei:", value=file_url)
-            direct_url = file_url
-
-    # If a direct URL is provided or generated from the uploaded file, process the audio
-    if direct_url:
-        if st.button("Transkribieren", key="button_transcribe"):
-            if not language:
-                st.error("Bitte wähle eine Sprache aus oder gib einen Ländercode ein.")
-                return
-            with st.spinner("Transkribiert..."):
-                handle_audio_process(
-                    num_speakers, 
-                    language, 
-                    prompt, 
-                    user_email, 
-                    direct_url=direct_url, 
-                    base_name=base_name, 
-                    speaker_names=speaker_names,
-                    translate=translate
+            with col2:
+                custom_language = st.text_input(
+                    "Sprache nicht vorhanden? Hier den Ländercode eingeben:",
+                    placeholder="z.B. ja für Japanisch",
+                    key=f"custom_lang_{transcript_idx}"
                 )
+            
+            language = custom_language if custom_language else language_dropdown
+
+            translate = st.checkbox("Transkript auf Englisch übersetzen", 
+                                 value=False, 
+                                 key=f"translate_{transcript_idx}")
+
+            num_speakers = st.number_input(
+                "Anzahl Sprecher:", 
+                min_value=1, 
+                value=2,
+                key=f"num_speakers_{transcript_idx}"
+            )
+            
+            # Collect speaker names
+            speaker_names = {}
+            for i in range(1, num_speakers + 1):
+                speaker_name = st.text_input(
+                    f"Name Sprecher {i} (optional):",
+                    key=f"speaker_{transcript_idx}_{i}"
+                )
+                if speaker_name:
+                    speaker_names[f"SPEAKER_{i-1:02}"] = speaker_name
+
+            prompt = st.text_input(
+                "Info für die KI (optional):",
+                key=f"prompt_{transcript_idx}"
+            )
+
+            uploaded_file = st.file_uploader(
+                "Audio-Datei hochladen (bei mehr als 100 MB wird die Datei automatisch in mehrere Teile aufgeteilt und die Transkription mit den einzelnen Teilen erneut durchgeführt):", 
+                type=["wav", "mp3", "mp4"],
+                key=f"file_uploader_{transcript_idx}"
+            )
+            
+            direct_url_input = st.empty()
+            direct_url = direct_url_input.text_input(
+                "Oder verwende einen Downloadlink zur Datei:",
+                key=f"direct_url_{transcript_idx}"
+            )
+            
+            base_name = None
+            if uploaded_file:
+                file_size = uploaded_file.size
+                if file_size > 100 * 1024 * 1024:
+                    parts = split_file(uploaded_file)
+                    st.warning("""
+                        Die hochgeladene Datei ist größer als 100 MB. Da der Hosting-Service eine Größenbeschränkung von 100 MB hat, 
+                        wurde die Datei automatisch in mehrere Teile aufgeteilt. 
+                        
+                        Bitte lade alle Teile herunter und führe die Transkription mit den einzelnen Teilen erneut durch.
+                        """)
+                    
+                    for idx, part in enumerate(parts):
+                        st.download_button(
+                            label=f"Download Teil {idx + 1}",
+                            data=part,
+                            file_name=f"{os.path.splitext(uploaded_file.name)[0]}_teil{idx + 1}{os.path.splitext(uploaded_file.name)[1]}",
+                            mime=uploaded_file.type,
+                            key=f"download_part_{transcript_idx}_{idx}"
+                        )
+                else:
+                    file_url = upload_to_hosting_service(uploaded_file)
+                    base_name = os.path.splitext(uploaded_file.name)[0]
+                    direct_url_input.text_input(
+                        "Oder verwende eine URL zur Datei:", 
+                        value=file_url,
+                        key=f"direct_url_input_{transcript_idx}"
+                    )
+                    direct_url = file_url
+
+            # Speichere die Konfiguration für dieses Transkript
+            if 'transcript_configs' not in st.session_state:
+                st.session_state.transcript_configs = {}
+            
+            st.session_state.transcript_configs[transcript_idx] = {
+                'language': language,
+                'num_speakers': num_speakers,
+                'prompt': prompt,
+                'direct_url': direct_url,
+                'base_name': base_name,
+                'speaker_names': speaker_names,
+                'translate': translate
+            }
+
+    # E-Mail-Eingabe außerhalb der Transkript-Schleifen
+    user_email = st.text_input(
+        "Bitte gib deine E-Mail-Adresse ein, falls du die Downloadlinks zugeschickt haben möchtest, sobald die Transkripte fertig sind. Es können mehrere E-Mail-Adressen eingeben werden. Diese müssen durch Komma getrennt werden (optional):"
+    )
+
+    # Gemeinsamer "Transkribieren" Button für alle Transkripte
+    if st.button("Alle Transkripte erstellen", key="button_transcribe_all"):
+        missing_language = False
+        for idx in range(num_transcripts):
+            config = st.session_state.transcript_configs.get(idx, {})
+            if not config.get('language'):
+                missing_language = True
+                st.error(f"Bitte wähle eine Sprache für Transkript {idx + 1} aus.")
+        
+        if not missing_language:
+            with st.spinner("Transkribiere alle Dateien..."):
+                results = []
+                for idx in range(num_transcripts):
+                    config = st.session_state.transcript_configs[idx]
+                    try:
+                        output_path, transcript_download_link = process_audio(
+                            direct_url=config['direct_url'],
+                            num_speakers=config['num_speakers'],
+                            language=config['language'],
+                            prompt=config['prompt'],
+                            base_name=f"{config['base_name']}_{idx+1}" if config['base_name'] else f"Transkript_{idx+1}",
+                            speaker_names=config['speaker_names'],
+                            translate=config['translate']
+                        )
+                        results.append((output_path, transcript_download_link))
+                    except Exception as e:
+                        st.error(f"Fehler bei Transkript {idx + 1}: {str(e)}")
+                        continue
+
+                # Erfolgreiche Transkripte anzeigen und Download-Buttons erstellen
+                if results:
+                    st.success("Fertig!")
+                    for idx, (output_path, download_link) in enumerate(results):
+                        if output_path:
+                            with open(output_path, "rb") as f:
+                                doc_bytes = f.read()
+                                st.download_button(
+                                    label=f"Download Transkript {idx + 1}",
+                                    data=doc_bytes,
+                                    file_name=os.path.basename(output_path),
+                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    key=f"download_transcript_{idx}"
+                                )
+                    
+                    # E-Mail-Benachrichtigung senden
+                    if user_email and results:
+                        email_list = user_email.split(',')
+                        for idx, (output_path, download_link) in enumerate(results):
+                            if output_path:
+                                send_email_notification(
+                                    email_list,
+                                    os.path.basename(output_path),
+                                    download_link
+                                )
 
 def enter_replicate_api_token():
     """Interactive field to enter the Replicate API token."""
