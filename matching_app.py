@@ -160,7 +160,7 @@ def matching_app():
             "widget": lambda: st.text_input("Gib deinen OpenAI API-Schlüssel ein", type="password", disabled=True)},
             {"title": "Schritt 2: Modellauswahl", 
             "content": "Wähle das GPT-Modell aus, das du verwenden möchtest. Für die beste Leistung empfehlen wir dir GPT-4o.\n", 
-            "widget": lambda: st.selectbox("Wähle das Modell", ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"], disabled=True)},
+            "widget": lambda: st.selectbox("Wähle das Modell", ["gpt-4o", "gpt-4o-mini", "o3-mini"], disabled=True)},
             {"title": "Schritt 3: Batchgröße festlegen", 
             "content": "Hier bestimmst du, wie viele Zeilen auf einmal übersetzt werden. Wir empfehlen dir eine Batchgröße von 10.\n\n Achtung: Umso größer die Batchsize umso schneller und günstiger, aber auch umso fehleranfälliger ist die Übersetzung.\n", 
             "widget": lambda: st.slider("Batchgröße", min_value=2, max_value=50, value=10, step=2, disabled=True)},
