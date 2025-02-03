@@ -196,7 +196,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "**Word-Dokument-Verarbeitung**\n\n(Word-Dokumente können hier von der KI beliebig bearbeitet werden)",
+            "**Word-Dokument-Verarbeitung**\n\n(Word-Dokumente können hier von der KI beliebig bearbeitet werden. Auch die Verarbeitung mehrerer Dateien ist hier möglich.)",
             on_click=lambda: select_app("transkript_verarbeitung"),
             key="transkript_verarbeitung_button",
         )
