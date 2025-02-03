@@ -371,32 +371,36 @@ def main():
                     except Exception as e:
                         st.error(f"Fehler bei Transkript {idx + 1}: {str(e)}")
                         continue
-
-                # Erfolgreiche Transkripte anzeigen und Download-Buttons erstellen
-                if results:
-                    st.success("Fertig!")
+            # Speichere die Ergebnisse in st.session_state, statt sie sofort anzuzeigen
+            if results:
+                st.session_state["transcription_results"] = results
+                # Sende E-Mail-Benachrichtigung nur einmal
+                if user_email and "email_sent" not in st.session_state:
+                    email_list = [email.strip() for email in user_email.split(',')]
                     for idx, (output_path, download_link) in enumerate(results):
                         if output_path:
-                            with open(output_path, "rb") as f:
-                                doc_bytes = f.read()
-                                st.download_button(
-                                    label=f"Download Transkript {idx + 1}",
-                                    data=doc_bytes,
-                                    file_name=os.path.basename(output_path),
-                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    key=f"download_transcript_{idx}"
-                                )
-                    
-                    # E-Mail-Benachrichtigung senden
-                    if user_email and results:
-                        email_list = user_email.split(',')
-                        for idx, (output_path, download_link) in enumerate(results):
-                            if output_path:
-                                send_email_notification(
-                                    email_list,
-                                    os.path.basename(output_path),
-                                    download_link
-                                )
+                            send_email_notification(
+                                email_list,
+                                os.path.basename(output_path),
+                                download_link
+                            )
+                    st.session_state["email_sent"] = True
+
+    # Am Ende von main(): Download-Buttons anzeigen, basierend auf den gespeicherten Ergebnissen
+    if "transcription_results" in st.session_state:
+        results = st.session_state["transcription_results"]
+        st.success("Fertig!")
+        for idx, (output_path, download_link) in enumerate(results):
+            if output_path:
+                with open(output_path, "rb") as f:
+                    doc_bytes = f.read()
+                    st.download_button(
+                        label=f"Download Transkript {idx + 1}",
+                        data=doc_bytes,
+                        file_name=os.path.basename(output_path),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"download_transcript_{idx}"
+                    )
 
 def enter_replicate_api_token():
     """Interactive field to enter the Replicate API token."""

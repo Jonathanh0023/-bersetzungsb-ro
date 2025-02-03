@@ -30,11 +30,12 @@ def selection_page():
             <h1 style='margin: 0; display: inline-flex; align-items: center; white-space: nowrap;'>
                 <img src='https://sw01.rogsurvey.de/data/bonsai/Kara_23_19/logo_Bonsa_BONSAI_neu.png' 
                      style='height: 80px; margin-right: 10px;'/>
-                Willkommen im bonsAI Übersetzungsbüro 📚
+                Willkommen in der bonsAI Toolbox 🧰
             </h1>
         </div>
         """,
         unsafe_allow_html=True
+
     )
     
     # Center the instruction text
