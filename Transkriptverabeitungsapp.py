@@ -2,11 +2,17 @@ import streamlit as st
 from openai import OpenAI
 import docx
 import os
+import io
+import base64
 
 # Bestimme den Pfad zum Logo
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
 def word_app():
+    # Am Anfang der Funktion initialisieren wir den Session State
+    if 'generated_responses' not in st.session_state:
+        st.session_state.generated_responses = {}
+
     st.title("Chatte mit deinen Word-Dateien")
 
     # Eingabefeld für den OpenAI API Key (als Passwortfeld)
@@ -74,61 +80,84 @@ def word_app():
                     # Sammle den vollständigen Text
                     full_response = ""
                     
-                    for chunk_index, chunk in enumerate(text_chunks):
+                    # Wenn es sich um eine Zusammenfassung handelt, den gesamten Text auf einmal verarbeiten
+                    if "Zusammenfassung" in system_prompt:
                         messages = [
                             {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": chunk}
+                            {"role": "user", "content": full_text}
                         ]
                         
-                        # Wenn es nicht der erste Chunk ist, füge Kontext hinzu
-                        if complete_output:
-                            messages.append({
-                                "role": "assistant",
-                                "content": "Bisheriger Kontext: " + " ".join(complete_output)
-                            })
-                        
-                        # Stream die Antwort
+                        # Stream die Antwort für den gesamten Text
                         response_stream = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=messages,
                             temperature=0.2,
                             max_tokens=16000,
-                            stream=True  # Aktiviere Streaming
+                            stream=True
                         )
-                        
-                        # Chunk-Header anzeigen
-                        if len(text_chunks) > 1:
-                            full_response += f"\n\nTeil {chunk_index + 1} von {len(text_chunks)}:\n"
                         
                         # Verarbeite den Stream
                         for response in response_stream:
                             if response.choices[0].delta.content is not None:
                                 full_response += response.choices[0].delta.content
-                                # Aktualisiere die Anzeige in Echtzeit
                                 message_placeholder.markdown(full_response + "▌")
-                        
-                        complete_output.append(full_response)
-                        
-                    # Finale Anzeige ohne Cursor
-                    message_placeholder.markdown(full_response)
+                            
+                    else:
+                        # Originale Chunk-Verarbeitung für andere Prompts
+                        for chunk_index, chunk in enumerate(text_chunks):
+                            messages = [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": chunk}
+                            ]
+                            
+                            # Wenn es nicht der erste Chunk ist, füge Kontext hinzu
+                            if complete_output:
+                                messages.append({
+                                    "role": "assistant",
+                                    "content": "Bisheriger Kontext: " + " ".join(complete_output)
+                                })
+                            
+                            # Stream die Antwort
+                            response_stream = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=messages,
+                                temperature=0.2,
+                                max_tokens=16000,
+                                stream=True  # Aktiviere Streaming
+                            )
+                            
+                            # Chunk-Header anzeigen
+                            if len(text_chunks) > 1:
+                                full_response += f"\n\nTeil {chunk_index + 1} von {len(text_chunks)}:\n"
+                            
+                            # Verarbeite den Stream
+                            for response in response_stream:
+                                if response.choices[0].delta.content is not None:
+                                    full_response += response.choices[0].delta.content
+                                    # Aktualisiere die Anzeige in Echtzeit
+                                    message_placeholder.markdown(full_response + "▌")
+                            
+                            complete_output.append(full_response)
+                            
+                        # Finale Anzeige ohne Cursor
+                        message_placeholder.markdown(full_response)
                 
-                # Erstelle eine neue Word-Datei für den Output
+                # Speichere die generierte Antwort im Session State
+                st.session_state.generated_responses[uploaded_file.name] = full_response
+
+                # Erstelle Word-Datei
                 output_doc = docx.Document()
-                output_doc.add_paragraph(full_response)
-                
-                # Speichere die Datei temporär
-                import io
+                output_doc.add_paragraph(st.session_state.generated_responses[uploaded_file.name])
                 doc_io = io.BytesIO()
                 output_doc.save(doc_io)
                 doc_io.seek(0)
                 
-                # Downloadbutton für den KI-Output als DOCX
-                st.download_button(
-                    label="Download als DOCX",
-                    data=doc_io,
-                    file_name=f"{uploaded_file.name}_output.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                # Konvertiere zu base64
+                docx_b64 = base64.b64encode(doc_io.getvalue()).decode()
+                
+                # Erstelle einen HTML Download-Link
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{docx_b64}" download="{uploaded_file.name}_output.docx">Download als DOCX</a>'
+                st.markdown(href, unsafe_allow_html=True)
                 
             except Exception as e:
                 st.error(f"Fehler bei der Verarbeitung durch GPT-4 für {uploaded_file.name}: {e}")

@@ -11,6 +11,7 @@ import smtplib
 from email.message import EmailMessage
 import math
 import io
+import base64
 
 def send_email_notification(receiver_emails, file_name, download_link):
     sender_email = "jonathan.heeckt@bonsai-research.com" 
@@ -392,15 +393,14 @@ def main():
         st.success("Fertig!")
         for idx, (output_path, download_link) in enumerate(results):
             if output_path:
+                # Lese die Datei und konvertiere zu base64
                 with open(output_path, "rb") as f:
                     doc_bytes = f.read()
-                    st.download_button(
-                        label=f"Download Transkript {idx + 1}",
-                        data=doc_bytes,
-                        file_name=os.path.basename(output_path),
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        key=f"download_transcript_{idx}"
-                    )
+                    doc_b64 = base64.b64encode(doc_bytes).decode()
+                
+                # Erstelle einen HTML Download-Link
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{doc_b64}" download="{os.path.basename(output_path)}">Download Transkript {idx + 1}</a>'
+                st.markdown(href, unsafe_allow_html=True)
 
 def enter_replicate_api_token():
     """Interactive field to enter the Replicate API token."""
@@ -446,14 +446,14 @@ def handle_audio_process(num_speakers, language, prompt, user_email, uploaded_fi
         )  
         if output_path is not None:
             st.success(f"Fertig!")
+            # Lese die Datei und konvertiere zu base64
             with open(output_path, "rb") as f:
                 doc_bytes = f.read()
-                st.download_button(
-                    label="Download",
-                    data=doc_bytes,
-                    file_name=os.path.basename(output_path),
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                doc_b64 = base64.b64encode(doc_bytes).decode()
+            
+            # Erstelle einen HTML Download-Link
+            href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{doc_b64}" download="{os.path.basename(output_path)}">Download Transkript</a>'
+            st.markdown(href, unsafe_allow_html=True)
             if user_email:
                 email_list = user_email.split(',')
                 send_email_notification(email_list, os.path.basename(output_path), transcript_download_link)
