@@ -80,8 +80,8 @@ def word_app():
                     # Sammle den vollständigen Text
                     full_response = ""
                     
-                    # Wenn es sich um eine Zusammenfassung handelt, den gesamten Text auf einmal verarbeiten
-                    if "Zusammenfassung" in system_prompt:
+                    # Wenn "Zusammenfassung" ausgewählt ist, den gesamten Text auf einmal verarbeiten
+                    if selected_prompt == "Zusammenfassung":
                         messages = [
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": full_text}
