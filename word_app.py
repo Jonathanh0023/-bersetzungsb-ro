@@ -542,8 +542,8 @@ def word_app():
     # 4) Haupt-Logik
     # --------------------------------------
     if uploaded_file is not None:
-        # DataFrame mit Originaltexten erstellen (ein Eintrag pro Seite)
-        if 'corrections_df' not in st.session_state:
+        # Warten, bis der Nutzer den gewünschten Modus (Editor/Übersetzer) bestätigt
+        if st.button("Prozess starten"):
             st.session_state.corrections_df = extract_text_from_docx(uploaded_file)
             
             total_pages = len(st.session_state.corrections_df)
@@ -553,9 +553,9 @@ def word_app():
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            # GPT-Korrektur für jede Seite
+            # GPT-Verarbeitung für jede Seite (abhängig vom ausgewählten Modus)
             for idx, row in st.session_state.corrections_df.iterrows():
-                status_text.text(f"Korrigiere Seite {idx+1} von {total_pages} ...")
+                status_text.text(f"{mode} - Verarbeite Seite {idx+1} von {total_pages} ...")
                 progress_bar.progress((idx + 1) / total_pages)
                 
                 corrected = check_text_with_gpt(row['original_text'])
@@ -565,7 +565,7 @@ def word_app():
             progress_bar.empty()
             status_text.empty()
             
-            st.success(f"Korrektur abgeschlossen! {total_pages} Seiten wurden verarbeitet.")
+            st.success(f"{mode} abgeschlossen! {total_pages} Seiten wurden verarbeitet.")
         
         # Darstellung der Korrekturen (angepasst für Seiten)
         col1, col2, col3 = st.columns(3)
@@ -576,7 +576,7 @@ def word_app():
         with col3:
             st.header("Änderungen")
         
-        for idx, row in st.session_state.corrections_df.iterrows():
+        for idx, row in st.session_state.get('corrections_df', pd.DataFrame()).iterrows():
             col1, col2, col3 = st.columns(3)
             
             # Original
