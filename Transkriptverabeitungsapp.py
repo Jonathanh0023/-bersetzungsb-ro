@@ -155,8 +155,11 @@ def word_app():
                 # Konvertiere zu base64
                 docx_b64 = base64.b64encode(doc_io.getvalue()).decode()
                 
-                # Erstelle einen HTML Download-Link
-                href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{docx_b64}" download="{uploaded_file.name}_output.docx">Download als DOCX</a>'
+                # Erstelle den Ausgabedateinamen mit dem ausgewählten Prompt
+                output_filename = f"{uploaded_file.name.rsplit('.', 1)[0]}_{selected_prompt}.docx"
+                
+                # Erstelle einen HTML Download-Link mit dem neuen Dateinamen
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{docx_b64}" download="{output_filename}">Download als DOCX</a>'
                 st.markdown(href, unsafe_allow_html=True)
                 
             except Exception as e:
