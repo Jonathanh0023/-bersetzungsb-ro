@@ -46,7 +46,7 @@ def word_app():
         target_language = st.selectbox(
             "Zielsprache",
             options=["US English", "UK English", "Deutsch", "Französisch", "Italienisch", 
-                    "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch", "Schwedisch"],
+                     "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch", "Schwedisch"],
             index=0
         )
         
@@ -56,7 +56,7 @@ def word_app():
             help="Hier können zusätzliche Informationen oder Anweisungen für die KI eingeben werden, "
                  "z.B. dass es sich um ein Transkript handelt oder Stil-Richtlinien oder Branchenkontext, etc...",
             placeholder="Beispiel: Dies ist ein Transkript einer Sitzung. "
-                      "Bitte korrigiere die Grammatik und die Rechtschreibung",
+                        "Bitte korrigiere die Grammatik und die Rechtschreibung",
             max_chars=1000
         )
 
@@ -91,7 +91,7 @@ def word_app():
 
         def process_table(table):
             """Verarbeitet eine Tabelle und gibt den formatierten Text zurück."""
-            # Prüfe ob die Tabelle leer ist
+            # Prüfe, ob die Tabelle leer ist
             if not table.rows:
                 return ""
             
@@ -162,7 +162,7 @@ def word_app():
                 try:
                     # Finde den Index der Tabelle
                     table_index = sum(1 for e in doc.element.body[:doc.element.body.index(element)]
-                                    if e.tag.endswith('tbl'))
+                                      if e.tag.endswith('tbl'))
                     table = doc.tables[table_index]
                     table_text = process_table(table)
                     if table_text:
@@ -204,11 +204,11 @@ def word_app():
         try:
             # Füge diese Zeile zu allen Templates hinzu (sowohl editor als auch translator)
             table_handling = ("\nSpecial formatting:\n"
-                             "- Table cells are separated by ' | '\n"
-                             "- Each table row is on a new line\n"
-                             "- Keep the table structure intact (do not remove or add separators)\n"
-                             "- Preserve empty lines before and after tables\n"
-                             "- Only correct/translate the content within cells\n")
+                              "- Table cells are separated by ' | '\n"
+                              "- Each table row is on a new line\n"
+                              "- Keep the table structure intact (do not remove or add separators)\n"
+                              "- Preserve empty lines before and after tables\n"
+                              "- Only correct/translate the content within cells\n")
             
             # Prompt-Templates je nach Zielsprache
             editor_templates = {
@@ -416,13 +416,13 @@ def word_app():
     # 4) Haupt-Logik
     # --------------------------------------
     if uploaded_file is not None:
-        # CSS für den "Prozess starten" Button – hebt den Button optisch hervor
+        # CSS nur für den "Prozess starten" Button, der in einem Container mit der ID "process-btn" liegt
         st.markdown(
             """
             <style>
-            div.stButton > button {
-                background-color: #ffcc00;
-                color: black;
+            #process-btn button {
+                background-color: #FF1493 !important;
+                color: white;
                 font-size: 20px;
                 font-weight: bold;
                 padding: 10px 20px;
@@ -432,7 +432,8 @@ def word_app():
             """, unsafe_allow_html=True
         )
         
-        # Warten, bis der Nutzer den gewünschten Modus (Editor/Übersetzer) bestätigt
+        # Den "Prozess starten" Button in einem Container einbetten
+        st.markdown('<div id="process-btn">', unsafe_allow_html=True)
         if st.button("Prozess starten"):
             st.session_state.corrections_df = extract_text_from_docx(uploaded_file)
             
@@ -456,6 +457,7 @@ def word_app():
             status_text.empty()
             
             st.success(f"{mode} abgeschlossen! {total_pages} Seiten wurden verarbeitet.")
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Darstellung der Korrekturen (angepasst für Seiten)
         col1, col2, col3 = st.columns(3)
