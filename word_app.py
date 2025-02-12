@@ -416,25 +416,25 @@ def word_app():
     # 4) Haupt-Logik
     # --------------------------------------
     if uploaded_file is not None:
-        # CSS nur für den "Prozess starten" Button, der in einem Container mit der ID "process-btn" liegt
+        # CSS, das gezielt den ersten Button (angenommen: "Prozess starten") in einem Vertical Block stylt
         st.markdown(
             """
             <style>
-            #process-btn button {
+            /* Target the first button in a vertical block (hier: der "Prozess starten" Button) */
+            div[data-testid="stVerticalBlock"] div:nth-of-type(1) [data-testid="stButton"] > button {
                 background-color: #FF1493 !important;
-                color: white;
-                font-size: 20px;
-                font-weight: bold;
-                padding: 10px 20px;
-                border-radius: 8px;
+                color: white !important;
+                font-size: 20px !important;
+                font-weight: bold !important;
+                padding: 10px 20px !important;
+                border-radius: 8px !important;
             }
             </style>
             """, unsafe_allow_html=True
         )
         
-        # Den "Prozess starten" Button in einem Container einbetten
-        st.markdown('<div id="process-btn">', unsafe_allow_html=True)
-        if st.button("Prozess starten"):
+        # Warten, bis der Nutzer den gewünschten Modus (Editor/Übersetzer) bestätigt
+        if st.button("Prozess starten", key="process_start"):
             st.session_state.corrections_df = extract_text_from_docx(uploaded_file)
             
             total_pages = len(st.session_state.corrections_df)
@@ -457,7 +457,6 @@ def word_app():
             status_text.empty()
             
             st.success(f"{mode} abgeschlossen! {total_pages} Seiten wurden verarbeitet.")
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Darstellung der Korrekturen (angepasst für Seiten)
         col1, col2, col3 = st.columns(3)
