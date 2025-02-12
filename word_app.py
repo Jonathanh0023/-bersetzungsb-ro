@@ -46,7 +46,7 @@ def word_app():
         target_language = st.selectbox(
             "Zielsprache",
             options=["US English", "UK English", "Deutsch", "Französisch", "Italienisch", 
-                    "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch"],
+                    "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch", "Schwedisch"],
             index=0
         )
         
@@ -335,6 +335,19 @@ def word_app():
                     "Poprawiaj tylko wymienione wyżej aspekty językowe.\n\n"
                     "Jeśli tekst jest zbyt krótki lub nie wymaga poprawek, odpowiedz pojedynczym myślnikiem '-'"
                     + table_handling
+                ),
+                "Schwedisch": (
+                    "Du är en professionell redaktör specialiserad på svenska. "
+                    "Granska och korrigera följande text med fokus på:\n"
+                    "1. Grammatik och syntax enligt svenska regler\n"
+                    "2. Stavning enligt svenska konventioner\n"
+                    "3. Interpunktion enligt svenska riktlinjer\n"
+                    "4. Förbättring av formuleringar samtidigt som du bevarar textens ursprungliga betydelse\n"
+                    "5. Säkerställ att svenskt vokabulär och uttryck används konsekvent\n\n"
+                    "Viktigt: Bevara all formatering och radbrytningar. "
+                    "Korrigera endast de språkaspekter som nämns ovan.\n\n"
+                    "Om ingen korrigering behövs, svara med ett enda bindestreck '-'"
+                    + table_handling
                 )
             }
 
@@ -447,6 +460,17 @@ def word_app():
                     "4. Zapewnij płynny język odpowiedni do kontekstu\n"
                     "5. Zachowaj terminy techniczne lub nazwy własne, chyba że istnieje standardowy polski odpowiednik\n\n"
                     "Jeśli tekst jest zbyt krótki lub jest już po polsku, odpowiedz pojedynczym myślnikiem '-'"
+                    + table_handling
+                ),
+                "Schwedisch": (
+                    "Du är en professionell översättare. Översätt följande text till svenska.\n\n"
+                    "Viktiga riktlinjer:\n"
+                    "1. Bevara textens ursprungliga betydelse och ton\n"
+                    "2. Använd en naturlig, modern svenska\n"
+                    "3. Bevara all formatering, radbrytningar och textstil\n"
+                    "4. Se till att språket flyter naturligt och är anpassat efter kontexten\n"
+                    "5. Behåll tekniska termer eller egennamn, om det inte finns en standardiserad svensk motsvarighet\n\n"
+                    "Om texten är för kort eller redan på svenska, svara med ett enda bindestreck '-'"
                     + table_handling
                 )
             }
