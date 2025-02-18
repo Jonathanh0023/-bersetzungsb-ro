@@ -323,7 +323,7 @@ def matching_app():
                 "Zusätzliche Schlüsselwörter (ein Begriff pro Zeile, case-insensitive):",
                 value="\n".join([
                     "result:", "kommentar", "general remarks", 
-                    "allgemeine bemerkungen", "screenout", "quotafull"
+                    "allgemeine bemerkungen", "screenout", "quotafull", "&#10148"
                 ]),
                 height=100
             )
