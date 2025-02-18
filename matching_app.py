@@ -76,7 +76,7 @@ def matching_app():
             return True
         if re.fullmatch(r'\d+(\.\d+)?', text):
             return True
-        if text.strip().lower() in {"result:", "kommentar", "general remarks", "allgemeine bemerkungen", "screenout", "quotafull", "&#10148S"}:
+        if text.strip().lower() in {"result:", "kommentar", "general remarks", "allgemeine bemerkungen", "screenout", "quotafull", "&#10148"}:
             return True
         if re.search(r'Brand\s+\d+', text):
             return True
