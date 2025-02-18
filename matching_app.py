@@ -264,7 +264,7 @@ def matching_app():
                 toggle_info("show_language_selection_info")
         if st.session_state.get("show_language_selection_info", False):
             st.info(info_texts["language_selection"])
-        language_options = ["English", "German", "French", "Spanish", "Italian", "Polish"]
+        language_options = ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"]
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
 
