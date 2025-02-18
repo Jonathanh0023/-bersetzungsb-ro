@@ -166,8 +166,8 @@ def matching_app():
             "widget": lambda: st.slider("Batchgröße", min_value=2, max_value=50, value=10, step=2, disabled=True)},
             {"title": "Schritt 4: Spracheinstellungen", 
             "content": "Wähle die Ausgangs- und Zielsprache deiner Übersetzung.\n", 
-            "widget": lambda: (st.selectbox("Ausgangssprache", ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"], disabled=True), 
-                            st.selectbox("Zielsprache", ["German", "English", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"], disabled=True))},
+            "widget": lambda: (st.selectbox("Ausgangssprache", ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese"], disabled=True), 
+                            st.selectbox("Zielsprache", ["German", "English", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese"], disabled=True))},
             {"title": "Schritt 5: Befragtengruppe und Thema der Befragung", 
             "content": "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. Gib die Befragtengruppe und das Thema am besten auf Englisch ein.\n", 
             "widget": lambda: (st.text_input("Befragtengruppe auf Englisch eingeben, z.B. 'Dentists'", disabled=True), 
@@ -264,7 +264,7 @@ def matching_app():
                 toggle_info("show_language_selection_info")
         if st.session_state.get("show_language_selection_info", False):
             st.info(info_texts["language_selection"])
-        language_options = ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"]
+        language_options = ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese"]
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
 
