@@ -575,12 +575,43 @@ def matching_app():
                     rogator_df_processed.to_excel(writer, index=False)
                 output.seek(0)
 
-                st.download_button(
-                    label="Übersetzte Rogator-Datei herunterladen",
-                    data=output,
-                    file_name="übersetzte_rogator_export.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                # Konvertiere die Excel-Datei in base64
+                b64 = base64.b64encode(output.getvalue()).decode()
+                
+                # Erstelle den HTML-Button mit Download-Funktionalität
+                download_link = f'''
+                    <a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" 
+                       download="übersetzte_rogator_export.xlsx"
+                       class="download-button">
+                        Übersetzte Rogator-Datei herunterladen
+                    </a>
+                '''
+                
+                # Füge CSS für den Button hinzu
+                st.markdown("""
+                    <style>
+                        .download-button {
+                            background-color: rgb(19, 23, 32);
+                            color: rgb(250, 250, 250);
+                            padding: 0.25rem 1rem;
+                            text-decoration: none;
+                            border-radius: 0.5rem;
+                            border: 1px solid rgba(250, 250, 250, 0.2);
+                            cursor: pointer;
+                            line-height: 1.6;
+                            font-weight: 400;
+                            font-size: 1rem;
+                            display: inline-block;
+                        }
+                        .download-button:hover {
+                            border-color: rgb(255, 75, 75);
+                            color: rgb(255, 75, 75);
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                # Zeige den Download-Button an
+                st.markdown(download_link, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Es ist ein Fehler aufgetreten: {e}")
