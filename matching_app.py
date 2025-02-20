@@ -591,21 +591,25 @@ def matching_app():
                 st.markdown("""
                     <style>
                         .download-button {
-                            background-color: rgb(19, 23, 32);
-                            color: rgb(250, 250, 250);
-                            padding: 0.25rem 1rem;
+                            background-color: rgb(229 225 225);
+                            color: rgb(49, 51, 63);
+                            padding: 0.5rem 1rem;
                             text-decoration: none;
                             border-radius: 0.5rem;
-                            border: 1px solid rgba(250, 250, 250, 0.2);
+                            border: 1px solid rgba(49, 51, 63, 0.2);
                             cursor: pointer;
                             line-height: 1.6;
                             font-weight: 400;
                             font-size: 1rem;
                             display: inline-block;
+                            transition: all 0.2s ease;
+                            margin-top: 1rem;
+                            font-family: "Source Sans Pro", sans-serif;
+                            box-shadow: rgb(0 0 0 / 5%) 0px 1px 3px;
                         }
                         .download-button:hover {
-                            border-color: rgb(255, 75, 75);
-                            color: rgb(255, 75, 75);
+                            border-color: rgb(49, 51, 63);
+                            color: rgb(49, 51, 63);
                         }
                     </style>
                 """, unsafe_allow_html=True)
