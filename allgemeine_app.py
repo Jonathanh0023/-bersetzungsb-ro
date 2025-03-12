@@ -111,7 +111,7 @@ def allgemeine_app():
             },
             {
                 "title": "Schritt 5: Zielland",
-                "content": "Wähle das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird dann an die kulturellen Gegebenheiten dieses Ziellandes angepasst.\n",
+                "content": "Wähle das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird an die kulturellen Gegebenheiten dieses Ziellandes angepasst.\n",
                 "widget": lambda: st.text_input(
                     "Land, in dem die Befragung durchgeführt wird, z.B. 'Germany'",
                     disabled=True,
@@ -373,7 +373,7 @@ def allgemeine_app():
                 try:
                     if api_key:
                         client = OpenAI(api_key=api_key)
-                        previous_translations = ""
+                        previous_translations = []  # Liste statt String
                         all_texts = df["Vergleichstext Ursprungsversion"].tolist()
                         translated_lines = []
 
@@ -438,7 +438,8 @@ def allgemeine_app():
                             # Füge bisherigen Kontext in die Systemnachricht ein
                             extended_system_message = (
                                 f"{custom_system_message}\n\n"
-                                f"Earlier translations to remain consistent in the translation:\n{previous_translations}"
+                                f"Earlier translations to remain consistent in the translation:\n" +
+                                "\n".join(previous_translations)
                             )
 
                             # Übersetze nur, wenn es Zeilen gibt, die übersetzt werden sollen
@@ -457,13 +458,14 @@ def allgemeine_app():
                                     # Direktes Zuweisen der übersetzten Zeile (ohne extra Prüfung)
                                     batch_result[pos] = translated_lines_api[k].strip()
 
-                            # Aktualisiere den Kontext mit den neuen Übersetzungen
-                            previous_translations += "\n".join(
-                                [
-                                    f"Original: {orig} | Übersetzt: {trans}"
-                                    for orig, trans in zip(batch_original, batch_result)
-                                ]
-                            ) + "\n"
+                            # Neue Übersetzungen als Liste
+                            batch_translation_lines = [
+                                f"Original: {orig} | Übersetzt: {trans}"
+                                for orig, trans in zip(batch_original, batch_result)
+                            ]
+                            # Füge die neuen Übersetzungen hinzu und behalte nur die letzten 50
+                            previous_translations.extend(batch_translation_lines)
+                            previous_translations = previous_translations[-50:]
 
                             # Aktualisierung des DataFrames mit dem übersetzten Text
                             for j, translated_text in enumerate(batch_result):
@@ -548,4 +550,3 @@ def allgemeine_app():
         main_app()
     else:
         show_tutorial()
-
