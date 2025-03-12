@@ -421,15 +421,19 @@ def allgemeine_app():
                             # Prüfe, welche Zeilen übersetzt werden müssen
                             for pos, text in enumerate(batch_original):
                                 if isinstance(text, str):
-                                    # Überspringe leere Strings oder reine Zahlen (z.B. "123" oder "123.45")
+                                    # Überspringe leere Strings oder reine Zahlen
                                     if text.strip() == "" or re.fullmatch(r'\d+(\.\d+)?', text.strip()):
                                         batch_result[pos] = text
                                     else:
                                         translatable_texts.append(text)
                                         translatable_positions.append(pos)
                                 else:
-                                    # Nicht-String-Werte (z.B. float) direkt übernehmen
+                                    # Nicht-String-Werte direkt übernehmen
                                     batch_result[pos] = text
+
+                            # Verwende einen eindeutigen Separator
+                            separator = "|||"
+                            joined_text = separator.join(translatable_texts)
 
                             # Füge bisherigen Kontext in die Systemnachricht ein
                             extended_system_message = (
@@ -439,7 +443,6 @@ def allgemeine_app():
 
                             # Übersetze nur, wenn es Zeilen gibt, die übersetzt werden sollen
                             if translatable_texts:
-                                joined_text = "\n".join(translatable_texts)
                                 translated_response = ask_assistant_translation(
                                     client,
                                     selected_model,
@@ -448,13 +451,12 @@ def allgemeine_app():
                                         {"role": "user", "content": joined_text},
                                     ]
                                 )
-                                translated_lines_api = translated_response.split("\n")
+                                # Teile die Antwort anhand des Trenners
+                                translated_lines_api = translated_response.split(separator)
                                 for k, pos in enumerate(translatable_positions):
-                                    if k < len(translated_lines_api):
-                                        batch_result[pos] = translated_lines_api[k].strip()
-                                    else:
-                                        batch_result[pos] = ""
-                            
+                                    # Direktes Zuweisen der übersetzten Zeile (ohne extra Prüfung)
+                                    batch_result[pos] = translated_lines_api[k].strip()
+
                             # Aktualisiere den Kontext mit den neuen Übersetzungen
                             previous_translations += "\n".join(
                                 [
@@ -546,3 +548,4 @@ def allgemeine_app():
         main_app()
     else:
         show_tutorial()
+
