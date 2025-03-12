@@ -375,7 +375,6 @@ def allgemeine_app():
                         client = OpenAI(api_key=api_key)
                         previous_translations = []  # Liste statt String
                         all_texts = df["Vergleichstext Ursprungsversion"].tolist()
-                        translated_lines = []
 
                         total_batches = (
                             len(all_texts) // batch_size
@@ -428,7 +427,6 @@ def allgemeine_app():
                                         translatable_texts.append(text)
                                         translatable_positions.append(pos)
                                 else:
-                                    # Nicht-String-Werte direkt übernehmen
                                     batch_result[pos] = text
 
                             # Verwende einen eindeutigen Separator
@@ -452,13 +450,34 @@ def allgemeine_app():
                                         {"role": "user", "content": joined_text},
                                     ]
                                 )
-                                # Teile die Antwort anhand des Trenners
                                 translated_lines_api = translated_response.split(separator)
-                                for k, pos in enumerate(translatable_positions):
-                                    # Direktes Zuweisen der übersetzten Zeile (ohne extra Prüfung)
-                                    batch_result[pos] = translated_lines_api[k].strip()
 
-                            # Neue Übersetzungen als Liste
+                                # Prüfung: Anzahl der Übersetzungen muss mit den erwarteten Zeilen übereinstimmen
+                                if len(translated_lines_api) != len(translatable_texts):
+                                    st.error(
+                                        f"Fehler in Batch {i}: Erwartet {len(translatable_texts)} Übersetzungen, aber erhalten {len(translated_lines_api)}. Führe Fallback-Übersetzung für diesen Batch durch."
+                                    )
+                                    # Fallback: Übersetze jede Zeile einzeln
+                                    for idx, pos in enumerate(translatable_positions):
+                                        try:
+                                            fallback_response = ask_assistant_translation(
+                                                client,
+                                                selected_model,
+                                                [
+                                                    {"role": "system", "content": extended_system_message},
+                                                    {"role": "user", "content": translatable_texts[idx]},
+                                                ]
+                                            )
+                                            batch_result[pos] = fallback_response.strip()
+                                        except Exception as ex:
+                                            st.error(f"Fallback-Übersetzung für Zeile {i+pos} fehlgeschlagen: {ex}")
+                                            batch_result[pos] = ""
+                                else:
+                                    # Übersetzte Zeilen zuweisen, wenn alles wie erwartet lief
+                                    for k, pos in enumerate(translatable_positions):
+                                        batch_result[pos] = translated_lines_api[k].strip()
+
+                            # Neue Übersetzungen als Liste für den Kontext
                             batch_translation_lines = [
                                 f"Original: {orig} | Übersetzt: {trans}"
                                 for orig, trans in zip(batch_original, batch_result)
@@ -480,8 +499,6 @@ def allgemeine_app():
 
                         # QM-Check für jede Zeile der übersetzten Texte
                         df["QMS"] = ""
-
-                        # Statusanzeige für QM-Check
                         status_text.text("QM-Check wird durchgeführt...")
 
                         for index, row in df.iterrows():
@@ -517,14 +534,9 @@ def allgemeine_app():
                             )
 
                             df.at[index, "QMS"] = qm_check_result
-
-                            # Aktualisiere den DataFrame
                             dataframe_placeholder.dataframe(df)
-
-                            # Fortschrittsbalken aktualisieren
                             progress_bar.progress((index + 1) / len(df))
 
-                        # Statusanzeige zurücksetzen
                         status_text.text("Übersetzung und QM-Check abgeschlossen.")
 
                         # DataFrame für den Download vorbereiten
@@ -550,3 +562,4 @@ def allgemeine_app():
         main_app()
     else:
         show_tutorial()
+
