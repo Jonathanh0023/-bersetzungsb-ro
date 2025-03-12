@@ -375,7 +375,6 @@ def allgemeine_app():
                         client = OpenAI(api_key=api_key)
                         previous_translations = ""
                         all_texts = df["Vergleichstext Ursprungsversion"].tolist()
-                        translated_lines = []
 
                         total_batches = (
                             len(all_texts) // batch_size
@@ -411,6 +410,7 @@ def allgemeine_app():
                             )
                             return response.choices[0].message.content.strip()
 
+                        # Übersetzungs-Loop in Batches
                         for i in range(0, len(all_texts), batch_size):
                             batch_indices = list(range(i, min(i + batch_size, len(all_texts))))
                             batch_original = [all_texts[j] for j in batch_indices]
@@ -421,14 +421,12 @@ def allgemeine_app():
                             # Prüfe, welche Zeilen übersetzt werden müssen
                             for pos, text in enumerate(batch_original):
                                 if isinstance(text, str):
-                                    # Überspringe leere Strings oder reine Zahlen
                                     if text.strip() == "" or re.fullmatch(r'\d+(\.\d+)?', text.strip()):
                                         batch_result[pos] = text
                                     else:
                                         translatable_texts.append(text)
                                         translatable_positions.append(pos)
                                 else:
-                                    # Nicht-String-Werte direkt übernehmen
                                     batch_result[pos] = text
 
                             # Verwende einen eindeutigen Separator
@@ -441,21 +439,35 @@ def allgemeine_app():
                                 f"Earlier translations to remain consistent in the translation:\n{previous_translations}"
                             )
 
-                            # Übersetze nur, wenn es Zeilen gibt, die übersetzt werden sollen
-                            if translatable_texts:
-                                translated_response = ask_assistant_translation(
-                                    client,
-                                    selected_model,
-                                    [
-                                        {"role": "system", "content": extended_system_message},
-                                        {"role": "user", "content": joined_text},
-                                    ]
-                                )
-                                # Teile die Antwort anhand des Trenners
-                                translated_lines_api = translated_response.split(separator)
-                                for k, pos in enumerate(translatable_positions):
-                                    # Direktes Zuweisen der übersetzten Zeile (ohne extra Prüfung)
-                                    batch_result[pos] = translated_lines_api[k].strip()
+                            try:
+                                # Übersetze nur, wenn es Zeilen gibt, die übersetzt werden sollen
+                                if translatable_texts:
+                                    translated_response = ask_assistant_translation(
+                                        client,
+                                        selected_model,
+                                        [
+                                            {"role": "system", "content": extended_system_message},
+                                            {"role": "user", "content": joined_text},
+                                        ]
+                                    )
+                                    # Teile die Antwort anhand des Trenners
+                                    translated_lines_api = translated_response.split(separator)
+                                    for k, pos in enumerate(translatable_positions):
+                                        batch_result[pos] = translated_lines_api[k].strip()
+                            except Exception as e:
+                                st.error(f"Ein Fehler ist aufgetreten beim Verarbeiten von Batch {i}: {e}")
+                                # Button zum Fortfahren anzeigen
+                                if st.button("Mit den darauffolgenden Zellen fortfahren"):
+                                    for j in range(len(batch_result)):
+                                        # Markiere die Zellen der fehlerhaften Batch
+                                        batch_result[j] = f"FEHLER: Nicht verarbeitet ({batch_original[j]})"
+                                    # Falls noch nicht vorhanden, füge eine Fehler-Spalte hinzu
+                                    if "Fehler" not in df.columns:
+                                        df["Fehler"] = ""
+                                    for j in range(len(batch_result)):
+                                        df.at[i + j, "Fehler"] = "Nicht verarbeitet aufgrund Fehler"
+                                else:
+                                    st.stop()
 
                             # Aktualisiere den Kontext mit den neuen Übersetzungen
                             previous_translations += "\n".join(
@@ -478,15 +490,12 @@ def allgemeine_app():
 
                         # QM-Check für jede Zeile der übersetzten Texte
                         df["QMS"] = ""
-
-                        # Statusanzeige für QM-Check
                         status_text.text("QM-Check wird durchgeführt...")
 
                         for index, row in df.iterrows():
                             original_text = row["Vergleichstext Ursprungsversion"]
                             translated_text = row["Text zur Übersetzung / Versionsanpassung"]
 
-                            # Angepasste Systemanweisung für den QM-Check inklusive Zielsprache
                             qm_check_message = (
                                 f"The following translation is part of a questionnaire on the topic of '{survey_topic}' for the group '{respondent_group}'. "
                                 f"The original text is in '{source_language}' and has been translated into '{target_language}'. "
@@ -515,17 +524,11 @@ def allgemeine_app():
                             )
 
                             df.at[index, "QMS"] = qm_check_result
-
-                            # Aktualisiere den DataFrame
                             dataframe_placeholder.dataframe(df)
-
-                            # Fortschrittsbalken aktualisieren
                             progress_bar.progress((index + 1) / len(df))
 
-                        # Statusanzeige zurücksetzen
                         status_text.text("Übersetzung und QM-Check abgeschlossen.")
 
-                        # DataFrame für den Download vorbereiten
                         output = BytesIO()
                         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                             df.to_excel(writer, index=False)
