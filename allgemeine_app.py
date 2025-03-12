@@ -484,7 +484,7 @@ def allgemeine_app():
                             ]
                             # Füge die neuen Übersetzungen hinzu und behalte nur die letzten 50
                             previous_translations.extend(batch_translation_lines)
-                            previous_translations = previous_translations[-50:]
+                            previous_translations = previous_translations[-100:]
 
                             # Aktualisierung des DataFrames mit dem übersetzten Text
                             for j, translated_text in enumerate(batch_result):
