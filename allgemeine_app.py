@@ -1,4 +1,4 @@
-# allgemeine_app.py
+# allgemeine_app.py 
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
@@ -201,7 +201,6 @@ def allgemeine_app():
             f"For reference, here is background information on the questionnaire's purpose and target audience:\n{survey_content}\n\n"
             f"Also, be sure to consider cultural nuances and conventions relevant to {country}. If any cultural adjustments need to be made to improve clarity, precision and appropriateness for respondents in {country}, please integrate them. When translating, base your translation on how the wording, sentence structure and linguistic expression is usually formulated in {country}.\n\n"
             f"Attention to detail: Take the necessary time to carefully consider each term. It is critical to maintain accuracy, modified sentence structure, and cultural appropriateness in {country} in the translated text."
-
         )
 
     def main_app():
@@ -332,10 +331,9 @@ def allgemeine_app():
         def clean_text(text):
             if pd.isna(text):
                 return text
-        # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
+            # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
             text = ' '.join(text.split())
             return text
-
 
         # Dateiupload
         col1, col2 = st.columns([10, 1])
@@ -414,7 +412,24 @@ def allgemeine_app():
                             return response.choices[0].message.content.strip()
 
                         for i in range(0, len(all_texts), batch_size):
-                            batch_text = "\n".join(all_texts[i : i + batch_size])
+                            batch_indices = list(range(i, min(i + batch_size, len(all_texts))))
+                            batch_original = [all_texts[j] for j in batch_indices]
+                            batch_result = [None] * len(batch_original)
+                            translatable_texts = []
+                            translatable_positions = []
+
+                            # Prüfe, welche Zeilen übersetzt werden müssen
+                            for pos, text in enumerate(batch_original):
+                                if isinstance(text, str):
+                                    # Überspringe leere Strings oder reine Zahlen (z.B. "123" oder "123.45")
+                                    if text.strip() == "" or re.fullmatch(r'\d+(\.\d+)?', text.strip()):
+                                        batch_result[pos] = text
+                                    else:
+                                        translatable_texts.append(text)
+                                        translatable_positions.append(pos)
+                                else:
+                                    # Nicht-String-Werte (z.B. float) direkt übernehmen
+                                    batch_result[pos] = text
 
                             # Füge bisherigen Kontext in die Systemnachricht ein
                             extended_system_message = (
@@ -422,33 +437,35 @@ def allgemeine_app():
                                 f"Earlier translations to remain consistent in the translation:\n{previous_translations}"
                             )
 
-                            # Übersetzung mit tenacity
-                            translated_batch = ask_assistant_translation(
-                                client,
-                                selected_model,
-                                [
-                                    {"role": "system", "content": extended_system_message},
-                                    {"role": "user", "content": batch_text},
-                                ]
-                            )
-                            translated_lines.extend(translated_batch.split("\n"))
-
+                            # Übersetze nur, wenn es Zeilen gibt, die übersetzt werden sollen
+                            if translatable_texts:
+                                joined_text = "\n".join(translatable_texts)
+                                translated_response = ask_assistant_translation(
+                                    client,
+                                    selected_model,
+                                    [
+                                        {"role": "system", "content": extended_system_message},
+                                        {"role": "user", "content": joined_text},
+                                    ]
+                                )
+                                translated_lines_api = translated_response.split("\n")
+                                for k, pos in enumerate(translatable_positions):
+                                    if k < len(translated_lines_api):
+                                        batch_result[pos] = translated_lines_api[k].strip()
+                                    else:
+                                        batch_result[pos] = ""
+                            
                             # Aktualisiere den Kontext mit den neuen Übersetzungen
                             previous_translations += "\n".join(
                                 [
                                     f"Original: {orig} | Übersetzt: {trans}"
-                                    for orig, trans in zip(
-                                        all_texts[i : i + batch_size],
-                                        translated_batch.split("\n"),
-                                    )
+                                    for orig, trans in zip(batch_original, batch_result)
                                 ]
-                            )
+                            ) + "\n"
 
                             # Aktualisierung des DataFrames mit dem übersetzten Text
-                            for j, line in enumerate(translated_batch.split("\n")):
-                                df.at[
-                                    i + j, "Text zur Übersetzung / Versionsanpassung"
-                                ] = line.strip()
+                            for j, translated_text in enumerate(batch_result):
+                                df.at[i + j, "Text zur Übersetzung / Versionsanpassung"] = translated_text
 
                             # Fortschrittsbalken aktualisieren
                             progress = (i + batch_size) / len(all_texts)
@@ -466,8 +483,6 @@ def allgemeine_app():
                         for index, row in df.iterrows():
                             original_text = row["Vergleichstext Ursprungsversion"]
                             translated_text = row["Text zur Übersetzung / Versionsanpassung"]
-
-                            # Zielsprachinformation bleibt direkt verfügbar als target_language
 
                             # Angepasste Systemanweisung für den QM-Check inklusive Zielsprache
                             qm_check_message = (
