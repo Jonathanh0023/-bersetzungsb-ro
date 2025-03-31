@@ -468,7 +468,7 @@ def handle_audio_process(num_speakers, language, prompt, user_email, uploaded_fi
         else:
             st.error(f"Bei der Verarbeitung der Audio-Datei ist ein Fehler aufgetreten:\n{error_message}")
 
-def split_file(file, max_size=100 * 1024 * 1024):
+def split_file(file, max_size=95 * 1024 * 1024):
     """Teilt eine Datei in Teile, die jeweils weniger als max_size Bytes groß sind."""
     total_size = len(file.getvalue())
     num_parts = math.ceil(total_size / max_size)
