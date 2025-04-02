@@ -1,9 +1,11 @@
+# allgemeine_app.py
+
 import streamlit as st
 import pandas as pd
 import uuid
 import base64
 import requests
-from io import BytesIO
+from io import BytesIO, StringIO
 import re
 from time import sleep
 from utils import select_app, toggle_info
@@ -45,53 +47,15 @@ def allgemeine_app():
 
     # Erklärungstexte für die Info-Icons
     info_texts = {
-        "api_key": (
-            "Hier trägst du deinen OpenAI API-Schlüssel ein. Ohne diesen können wir leider nicht loslegen. "
-            "Den aktuellen API-Schlüssel erhältst du von Jonathan Heeckt oder Tobias Bucher."
-        ),
-        "email": (
-            "Bitte gib deine E-Mail-Adresse ein. Du erhältst das fertige Übersetzungsergebnis "
-            "dann direkt per E-Mail zugesendet."
-        ),
-        "model_selection": (
-            "Wähle das GPT-Modell aus, das du verwenden möchtest. "
-            "Für die beste Leistung empfehlen wir dir GPT-4o."
-        ),
-        "batch_size": (
-            "Hier bestimmst du, wie viele Zeilen auf einmal übersetzt werden. "
-            "Wir empfehlen dir eine Batchgröße von 10. Achtung: Umso größer die Batchsize "
-            "umso schneller und günstiger, aber auch umso fehleranfälliger ist die Übersetzung."
-        ),
-        "language_selection": (
-            "Wähle die Ausgangs- und Zielsprache deiner Übersetzung. Sollte deine gewünschte "
-            "Ausgangs-/Zielsprache nicht verfügbar sein, melde dich gerne bei Jonathan Heeckt oder Tobias Bucher."
-        ),
-        "respondent_group": (
-            "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. "
-            "Gebe die Befragtengruppe und das Thema am besten auf Englisch ein."
-        ),
-        "survey_content": (
-            "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht "
-            "und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\n"
-            "z.B. 'The purpose of the questionnaire is to determine whether dentists recommend "
-            "Listerine as a mouthwash and to understand their reasons for doing so or not.'"
-        ),
-        "file_upload": (
-            "Lade die Datei hoch, die übersetzt werden soll, im CSV-Format.\n\n"
-            "Achtung: Es wird immer die Spalte mit der Überschrift "
-            "'Vergleichstext Ursprungsversion' übersetzt. Das Ergebnis landet "
-            "in der Spalte 'Text zur Übersetzung / Versionsanpassung'. Andere Spalten werden nicht übersetzt.\n\n"
-            "Sobald deine CSV-Datei erfolgreich hochgeladen wurde, erscheint deine CSV-Datei "
-            "als Tabelle im bonsAI Übersetzungsbüro.\n\n"
-            "Durch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. "
-            "Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung "
-            "abgeschlossen ist, kannst du die CSV-Datei als Base64 in Zapier weiterverarbeiten "
-            "(per E-Mail verschicken usw.)."
-        ),
-        "country": (
-            "Hier wählst du das Land aus, in dem die Befragung durchgeführt wird. "
-            "Die Übersetzung wird an die kulturellen Besonderheiten dieses Ziellandes angepasst."
-        )
+        "api_key": "Hier trägst du deinen OpenAI API-Schlüssel ein. Ohne diesen können wir leider nicht loslegen. Den aktuellen API-Schlüssel erhältst du von Jonathan Heeckt oder Tobias Bucher.",
+        "email": "Bitte gib deine E-Mail-Adresse ein. Du erhältst das fertige Übersetzungsergebnis dann direkt per E-Mail zugesendet.",
+        "model_selection": "Wähle das GPT-Modell aus, das du verwenden möchtest. Für die beste Leistung empfehlen wir dir GPT-4o.",
+        "batch_size": "Hier bestimmst du, wie viele Zeilen auf einmal übersetzt werden. Wir empfehlen dir eine Batchgröße von 10. Achtung: Umso größer die Batchsize umso schneller und günstiger, aber auch umso fehleranfälliger ist die Übersetzung.",
+        "language_selection": "Wähle die Ausgangs- und Zielsprache deiner Übersetzung. Sollte deine gewünschte Ausgangs-/ Zielsprache nicht verfügbar sein, melde dich gerne bei Jonathan Heeckt oder Tobias Bucher.",
+        "respondent_group": "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. Gebe die Befragtengruppe und das Thema am besten auf Englisch ein.",
+        "survey_content": "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\nz.B. 'The purpose of the questionnaire is to determine whether dentists recommend Listerine as a mouthwash and to understand their reasons for doing so or not.'",
+        "file_upload": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, Spalten mit anderen Überschriften werden nicht übersetzt. Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' herunterladen.",
+        "country": "Hier wählst du das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird an die kulturellen Besonderheiten dieses Ziellandes angepasst."
     }
 
     # Tutorial anzeigen
@@ -113,7 +77,10 @@ def allgemeine_app():
                     "Gib bitte eine gültige E-Mail-Adresse an, damit du das fertige Übersetzungsergebnis "
                     "zugeschickt bekommst.\n"
                 ),
-                "widget": lambda: st.text_input("Deine E-Mail-Adresse", disabled=True),
+                "widget": lambda: st.text_input(
+                    "Deine E-Mail-Adresse",
+                    disabled=True,
+                ),
             },
             {
                 "title": "Schritt 2: API-Schlüssel",
@@ -216,25 +183,26 @@ def allgemeine_app():
                 ),
             },
             {
-                "title": "Schritt 9: CSV-Upload",
+                "title": "Schritt 9: Dateiupload",
                 "content": (
-                    "Lade die Datei hoch, die übersetzt werden soll. **Achtung: Nur CSV-Format**. "
-                    "Die CSV-Datei muss die Spalten 'Vergleichstext Ursprungsversion' und "
-                    "'Text zur Übersetzung / Versionsanpassung' enthalten. "
-                    "Spalten mit anderen Überschriften werden ignoriert.\n\n"
-                    "Das Tool erkennt automatisch, ob die CSV Komma oder Semikolon als Trennzeichen hat."
+                    "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien "
+                    "ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte "
+                    "mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, "
+                    "Spalten mit anderen Überschriften werden nicht übersetzt.\n\n"
                 ),
-                "widget": lambda: st.file_uploader("Wähle eine CSV-Datei", type=["csv"], disabled=True),
+                "widget": lambda: st.file_uploader(
+                    "Wähle eine Datei", type=["xlsx"], disabled=True
+                ),
             },
             {
                 "title": "Schritt 10: Übersetzung starten",
                 "content": (
-                    "Sobald deine CSV-Datei erfolgreich hochgeladen wurde, erscheint deine CSV-Datei "
-                    "als Tabelle im bonsAI Übersetzungsbüro.\n\n"
-                    "Durch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. "
-                    "Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. "
-                    "Sobald die Übersetzung abgeschlossen ist, wird das Ergebnis an Zapier gesendet "
-                    "und du bekommst die Datei (z.B. per E-Mail)."
+                    "Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei "
+                    "als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons "
+                    "'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt "
+                    "live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, "
+                    "kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' "
+                    "herunterladen."
                 ),
                 "widget": lambda: None,
             },
@@ -282,7 +250,7 @@ def allgemeine_app():
             st.info(info_texts["email"])
         email = st.text_input("Bitte gib deine E-Mail-Adresse ein, um das Ergebnis zu erhalten.")
 
-        # API-Schlüssel
+        # API-Schlüssel Eingabefeld mit Infobutton
         col_api, col_info = st.columns([10, 1])
         with col_api:
             st.subheader("API-Schlüssel")
@@ -293,7 +261,7 @@ def allgemeine_app():
             st.info(info_texts["api_key"])
         api_key = st.text_input("Gib deinen OpenAI API-Schlüssel ein", type="password")
 
-        # Modellauswahl
+        # Auswahl des GPT-Modells
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Modellauswahl")
@@ -305,7 +273,7 @@ def allgemeine_app():
         model_options = ["o3-mini", "gpt-4o-mini", "gpt-4o"]
         selected_model = st.selectbox("Wähle das Modell", model_options, index=0)
 
-        # Batchgröße
+        # Eingabefeld für die Batchgröße
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Batchgröße")
@@ -316,7 +284,7 @@ def allgemeine_app():
             st.info(info_texts["batch_size"])
         batch_size = st.slider("Batchgröße", min_value=2, max_value=50, value=10, step=2)
 
-        # Sprachauswahl
+        # Dropdowns für Sprachen
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Spracheinstellungen")
@@ -375,7 +343,7 @@ def allgemeine_app():
             height=100,
         )
 
-        # Systemanweisung
+        # Systemanweisung (wird später in Zapier gebraucht)
         def generate_system_message(
             source_language,
             respondent_group,
@@ -393,8 +361,7 @@ def allgemeine_app():
                 "Programming Instructions: All programming instructions, including codes and strings "
                 "(e.g., 'Screenout', 'Quote'), must remain exactly as they are in the translation. "
                 "Rogator-specific syntax, which always begins with !% and ends with %!, represents "
-                "dynamic placeholders and must be retained unchanged, as these will later be "
-                "populated by the software.\n\n"
+                "dynamic placeholders and must be retained unchanged.\n\n"
                 "Curly Brace Elements: Retain all elements within curly braces and any country codes "
                 "without translating them.\n\n"
                 "Form of Address: Use the polite form ('Sie') for direct addresses. For job titles "
@@ -404,25 +371,13 @@ def allgemeine_app():
                 "translation is fluent and natural for native speakers, without changing the original intent. "
                 "For example: If the sentence already uses a polite form of address, such as "
                 "'Veuillez' or 'Pourriez-vous' in French, it is not necessary to include phrases like "
-                "'s'il vous plaît' for example. The German phrase ‘Würden Sie uns bitte’ would be "
+                "'s'il vous plaît'. The German phrase ‘Würden Sie uns bitte’ would be "
                 "translated into French as ‘Veuillez nous’ and the ‘s'il vous plaît’ can be omitted.\n\n"
                 "Language-Specific Conventions: Pay special attention to conventional sentence "
-                "structures and placement of polite expressions in the target language. For French, "
-                "for example, the phrase 's'il vous plaît' is typically placed at the beginning or "
-                "end of the sentence, not in the middle."
-                f"Consistency in Style: Ensure a consistent and natural style throughout the "
-                f"translation, adapting the language to suit {target_language} linguistic nuances. "
-                "Your response should include only the translated text. If the input is a code or "
-                "a placeholder, reproduce it exactly without translation.\n\n"
-                f"For reference, here is background information on the questionnaire's purpose "
-                f"and target audience:\n{survey_content}\n\n"
-                f"Also, be sure to consider cultural nuances and conventions relevant to {country}. "
-                "If any cultural adjustments need to be made to improve clarity, precision and "
-                f"appropriateness for respondents in {country}, please integrate them. When "
-                "translating, base your translation on how the wording, sentence structure and "
-                f"linguistic expression is usually formulated in {country}.\n\n"
-                "Attention to detail: Take the necessary time to carefully consider each term. It is "
-                "critical to maintain accuracy, modified sentence structure, and cultural "
+                "structures and placement of polite expressions in the target language. "
+                f"Ensure a consistent style for respondents in {country}.\n\n"
+                "Attention to detail: Take the necessary time to carefully consider each term. "
+                "It is critical to maintain accuracy, modified sentence structure, and cultural "
                 f"appropriateness in {country} in the translated text."
             )
 
@@ -436,61 +391,56 @@ def allgemeine_app():
         )
 
         with st.expander("Systemanweisung (Achtung: Nur für fortgeschrittene Anwender)"):
-            custom_system_message = st.text_area(
-                "Gib die Systemanweisung ein", value=system_message, height=200
-            )
+            custom_system_message = st.text_area("Gib die Systemanweisung ein", value=system_message, height=200)
 
-        # CSV-Upload
+        # Dateiupload
         col1, col2 = st.columns([10, 1])
         with col1:
-            st.subheader("Dateiupload (CSV) – erkennt Komma oder Semikolon")
+            st.subheader("Dateiupload")
         with col2:
             if st.button("ℹ️", key="info_file_upload"):
                 toggle_info("show_file_upload_info")
         if st.session_state.get("show_file_upload_info", False):
             st.info(info_texts["file_upload"])
-        uploaded_file = st.file_uploader("Wähle eine CSV-Datei", type=["csv"])
+        uploaded_file = st.file_uploader("Wähle eine Datei", type=["xlsx"])
 
         st.write("---")
 
-        # Button "Übersetzen"
+        # Button "Übersetzen" – hier: Umwandlung in CSV + Versand an Zapier
         if uploaded_file is not None:
-            # Versuch: autom. Delimiter
-            try:
-                # hier lassen wir pandas den delimiter auto-erkennen
-                df = pd.read_csv(uploaded_file, sep=None, engine="python")
-            except Exception as e:
-                st.error(
-                    f"Fehler beim Einlesen der CSV. "
-                    f"Bitte prüfe, ob die Datei korrekt formatiert ist.\n\n{e}"
-                )
-                return
-
-            # Prüfung auf Spalten
+            df = pd.read_excel(uploaded_file)
             if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
                 st.error(
-                    "Die hochgeladene CSV-Datei enthält nicht die erforderlichen "
+                    "Die hochgeladene Excel-Datei enthält nicht die erforderlichen "
                     "Spalten 'Vergleichstext Ursprungsversion' und/oder "
                     "'Text zur Übersetzung / Versionsanpassung'. "
-                    "Bitte lade eine gültige CSV hoch."
+                    "Bitte lade eine gültige Datei hoch."
                 )
                 return
 
-            st.write("Vorschau der hochgeladenen Datei:")
+            st.write("Vorschau der hochgeladenen Excel-Datei:")
             st.dataframe(df)
 
-            translate_button = st.button("Übersetzen")
+            # Hier könntest du noch lokal etwas bearbeiten, wenn gewünscht
+            # z. B. df["Neue Spalte"] = ...
+
+            translate_button = st.button("Übersetzen (CSV an Zapier)")
             if translate_button:
+                # Prüfen, ob E-Mail ausgefüllt wurde
                 if not email.strip():
                     st.error("Bitte gib eine gültige E-Mail-Adresse ein, bevor du fortfährst.")
                     return
 
-                # Erzeuge eine Job-ID
+                # Erzeuge Job-ID
                 job_id = str(uuid.uuid4())
 
-                # Wandle CSV in Base64
-                csv_bytes = df.to_csv(index=False).encode("utf-8")
-                file_base64 = base64.b64encode(csv_bytes).decode("utf-8")
+                # DataFrame -> CSV
+                csv_buffer = StringIO()
+                df.to_csv(csv_buffer, index=False, encoding="utf-8")
+                csv_data = csv_buffer.getvalue()
+
+                # CSV Base64-kodieren
+                csv_base64 = base64.b64encode(csv_data.encode("utf-8")).decode("utf-8")
 
                 # Payload für Zapier
                 payload = {
@@ -498,43 +448,40 @@ def allgemeine_app():
                     "email": email,
                     "api_key": api_key,
                     "selected_model": selected_model,
+                    "system_message": custom_system_message,
+                    "file_base64": csv_base64,
                     "batch_size": batch_size,
                     "source_language": source_language,
                     "target_language": target_language,
                     "country": country,
                     "respondent_group": respondent_group,
                     "survey_topic": survey_topic,
-                    "survey_content": survey_content,
-                    "system_message": custom_system_message,
-                    "file_base64": file_base64
+                    "survey_content": survey_content
                 }
 
-                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/22221288/2c8vwqv/"
+                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/DEIN_ZAPIER_HOOK"
 
                 try:
                     response = requests.post(zapier_webhook_url, json=payload, timeout=15)
                     if response.status_code == 200:
                         st.success(
                             f"Anfrage an Zapier gesendet. "
-                            f"Deine Job-ID lautet: {job_id}.\n\n"
-                            f"Du erhältst das Ergebnis an die angegebene E-Mail-Adresse, "
-                            f"sobald die Übersetzung abgeschlossen ist."
+                            f"Job-ID: {job_id}.\n\n"
+                            f"Du erhältst das Ergebnis als CSV an die angegebene E-Mail-Adresse, "
+                            f"sobald die Übersetzung (in Zapier) abgeschlossen ist."
                         )
                     else:
-                        st.error(
-                            f"Fehler beim Senden an Zapier. "
-                            f"Status Code: {response.status_code}\n\n"
-                            f"Antwort: {response.text}"
-                        )
+                        st.error(f"Fehler beim Senden an Zapier (Status {response.status_code}):\n{response.text}")
                 except Exception as e:
-                    st.error(f"Ein Fehler ist aufgetreten: {e}")
+                    st.error(f"Fehler bei der Kommunikation mit Zapier: {e}")
 
         else:
-            st.info("Bitte lade eine CSV-Datei hoch, um fortzufahren.")
+            st.info("Bitte lade eine Excel-Datei hoch, um fortzufahren.")
 
-    # Tutorial oder Hauptanwendung anzeigen
+    # Zeige Hauptanwendung oder Tutorial
     if st.session_state.tutorial_done:
         main_app()
     else:
         show_tutorial()
+
 
