@@ -67,15 +67,12 @@ def allgemeine_app():
         if step > 0:
             if col1.button("Zurück"):
                 st.session_state.tutorial_step = max(0, step - 1)
-                st.experimental_rerun()
         if st.session_state.tutorial_step < len(tutorial_steps) - 1:
             if col2.button("Weiter"):
                 st.session_state.tutorial_step += 1
-                st.experimental_rerun()
         else:
             if col2.button("Tutorial abschließen"):
                 st.session_state.tutorial_done = True
-                st.experimental_rerun()
 
     # Hauptanwendung mit allen Eingabefeldern
     def main_app():
@@ -182,6 +179,10 @@ def allgemeine_app():
         main_app()
     else:
         show_tutorial()
+
+if __name__ == "__main__":
+    allgemeine_app()
+
 
 if __name__ == "__main__":
     allgemeine_app()
