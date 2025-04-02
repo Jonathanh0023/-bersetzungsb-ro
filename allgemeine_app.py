@@ -1,7 +1,8 @@
-# allgemeine_app.py
-
 import streamlit as st
 import pandas as pd
+import uuid
+import base64
+import requests
 from io import BytesIO
 import re
 from time import sleep
@@ -230,6 +231,7 @@ def allgemeine_app():
             st.session_state.tutorial_done = True
             st.session_state.tutorial_step = 0
 
+    # Haupt-App-Ansicht
     def main_app():
         def toggle_info(key):
             if key not in st.session_state:
@@ -245,7 +247,6 @@ def allgemeine_app():
                 toggle_info("show_email_info")
         if st.session_state.get("show_email_info", False):
             st.info(info_texts["email"])
-
         email = st.text_input("Bitte gib deine E-Mail-Adresse ein, um das Ergebnis zu erhalten.")
 
         # API-Schlüssel Eingabefeld mit Infobutton
@@ -306,7 +307,7 @@ def allgemeine_app():
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
 
-        # Zielland-Eingabefeld mit Info-Icon
+        # Zielland-Eingabefeld
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Zielland")
@@ -317,7 +318,7 @@ def allgemeine_app():
             st.info(info_texts["country"])
         country = st.text_input("Land, in dem die Befragung durchgeführt wird (z.B. 'Germany'): ")
 
-        # Neue Eingabefelder für Befragtengruppe und Thema der Befragung
+        # Befragtengruppe und Thema
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Befragtengruppe und Thema")
@@ -326,12 +327,8 @@ def allgemeine_app():
                 toggle_info("show_respondent_group_info")
         if st.session_state.get("show_respondent_group_info", False):
             st.info(info_texts["respondent_group"])
-        respondent_group = st.text_input(
-            "Befragtengruppe auf Englisch eingeben, z.B. 'Dentists'"
-        )
-        survey_topic = st.text_input(
-            "Thema der Befragung auf Englisch eingeben, z.B. 'dental hygiene'"
-        )
+        respondent_group = st.text_input("Befragtengruppe auf Englisch, z.B. 'Dentists'")
+        survey_topic = st.text_input("Thema der Befragung auf Englisch, z.B. 'dental hygiene'")
 
         # Fragebogen
         col1, col2 = st.columns([10, 1])
@@ -347,7 +344,7 @@ def allgemeine_app():
             height=100,
         )
 
-        # Zusammenklappbare Systemanweisung mit Warnhinweis (wie gehabt)
+        # Systemanweisung
         def generate_system_message(
             source_language,
             respondent_group,
@@ -425,7 +422,7 @@ def allgemeine_app():
 
         st.write("---")
 
-        # Placeholder für die Übersetzung (jetzt via Zapier)
+        # Button "Übersetzen"
         if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
             if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
@@ -447,20 +444,58 @@ def allgemeine_app():
                     st.error("Bitte gib eine gültige E-Mail-Adresse ein, bevor du fortfährst.")
                     return
 
-                # Hier würdest du normalerweise die Daten an Zapier schicken.
-                # Da wir den Teil an Zapier auslagern, setzen wir nur einen Platzhalter hin:
-                st.success(
-                    "Der Übersetzungsprozess wird an Zapier ausgelagert. "
-                    "Du erhältst das Ergebnis an die angegebene E-Mail-Adresse."
-                )
+                # Erzeuge eine Job-ID
+                job_id = str(uuid.uuid4())
+
+                # Datei in Base64 umwandeln
+                file_bytes = uploaded_file.read()
+                file_base64 = base64.b64encode(file_bytes).decode("utf-8")
+
+                # Payload für Zapier
+                payload = {
+                    "job_id": job_id,
+                    "email": email,
+                    "api_key": api_key,
+                    "selected_model": selected_model,
+                    "batch_size": batch_size,
+                    "source_language": source_language,
+                    "target_language": target_language,
+                    "country": country,
+                    "respondent_group": respondent_group,
+                    "survey_topic": survey_topic,
+                    "survey_content": survey_content,
+                    "system_message": custom_system_message,
+                    "file_base64": file_base64
+                }
+
+                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/22221288/2c8vwqv/"
+
+                try:
+                    # Sende die Daten per POST an Zapier
+                    response = requests.post(zapier_webhook_url, json=payload, timeout=15)
+
+                    if response.status_code == 200:
+                        st.success(
+                            f"Anfrage an Zapier gesendet. "
+                            f"Deine Job-ID lautet: {job_id}.\n\n"
+                            f"Du erhältst das Ergebnis an die angegebene E-Mail-Adresse, "
+                            f"sobald die Übersetzung abgeschlossen ist."
+                        )
+                    else:
+                        st.error(
+                            f"Fehler beim Senden an Zapier. "
+                            f"Status Code: {response.status_code}\n\n"
+                            f"Antwort: {response.text}"
+                        )
+
+                except Exception as e:
+                    st.error(f"Ein Fehler ist aufgetreten: {e}")
 
         else:
             st.info("Bitte lade eine Excel-Datei hoch, um fortzufahren.")
 
-    # Zeige Hauptanwendung oder Tutorial
+    # Tutorial oder Hauptanwendung anzeigen
     if st.session_state.tutorial_done:
         main_app()
     else:
         show_tutorial()
-
-
