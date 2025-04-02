@@ -222,6 +222,7 @@ def allgemeine_app():
                     "Die CSV-Datei muss die Spalten 'Vergleichstext Ursprungsversion' und "
                     "'Text zur Übersetzung / Versionsanpassung' enthalten. "
                     "Spalten mit anderen Überschriften werden ignoriert.\n\n"
+                    "Das Tool erkennt automatisch, ob die CSV Komma oder Semikolon als Trennzeichen hat."
                 ),
                 "widget": lambda: st.file_uploader("Wähle eine CSV-Datei", type=["csv"], disabled=True),
             },
@@ -442,7 +443,7 @@ def allgemeine_app():
         # CSV-Upload
         col1, col2 = st.columns([10, 1])
         with col1:
-            st.subheader("Dateiupload (CSV)")
+            st.subheader("Dateiupload (CSV) – erkennt Komma oder Semikolon")
         with col2:
             if st.button("ℹ️", key="info_file_upload"):
                 toggle_info("show_file_upload_info")
@@ -454,8 +455,16 @@ def allgemeine_app():
 
         # Button "Übersetzen"
         if uploaded_file is not None:
-            # Lies die CSV in einen DataFrame (nur in der Streamlit-App, hier ist Pandas erlaubt)
-            df = pd.read_csv(uploaded_file)
+            # Versuch: autom. Delimiter
+            try:
+                # hier lassen wir pandas den delimiter auto-erkennen
+                df = pd.read_csv(uploaded_file, sep=None, engine="python")
+            except Exception as e:
+                st.error(
+                    f"Fehler beim Einlesen der CSV. "
+                    f"Bitte prüfe, ob die Datei korrekt formatiert ist.\n\n{e}"
+                )
+                return
 
             # Prüfung auf Spalten
             if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
@@ -500,7 +509,7 @@ def allgemeine_app():
                     "file_base64": file_base64
                 }
 
-                zapier_webhook_url = "DEINE_ZAPIER_HOOK_URL_HIER_EINFÜGEN"
+                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/22221288/2c8vwqv/"
 
                 try:
                     response = requests.post(zapier_webhook_url, json=payload, timeout=15)
