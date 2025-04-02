@@ -45,15 +45,53 @@ def allgemeine_app():
 
     # Erklärungstexte für die Info-Icons
     info_texts = {
-        "api_key": "Hier trägst du deinen OpenAI API-Schlüssel ein. Ohne diesen können wir leider nicht loslegen. Den aktuellen API-Schlüssel erhältst du von Jonathan Heeckt oder Tobias Bucher.",
-        "email": "Bitte gib deine E-Mail-Adresse ein. Du erhältst das fertige Übersetzungsergebnis dann direkt per E-Mail zugesendet.",
-        "model_selection": "Wähle das GPT-Modell aus, das du verwenden möchtest. Für die beste Leistung empfehlen wir dir GPT-4o.",
-        "batch_size": "Hier bestimmst du, wie viele Zeilen auf einmal übersetzt werden. Wir empfehlen dir eine Batchgröße von 10. Achtung: Umso größer die Batchsize umso schneller und günstiger, aber auch umso fehleranfälliger ist die Übersetzung.",
-        "language_selection": "Wähle die Ausgangs- und Zielsprache deiner Übersetzung. Sollte deine gewünschte Ausgangs-/ Zielsprache nicht verfügbar sein, melde dich gerne bei Jonathan Heeckt oder Tobias Bucher.",
-        "respondent_group": "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. Gebe die Befragtengruppe und das Thema am besten auf Englisch ein.",
-        "survey_content": "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\nz.B. 'The purpose of the questionnaire is to determine whether dentists recommend Listerine as a mouthwash and to understand their reasons for doing so or not.'",
-        "file_upload": "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, Spalten mit anderen Überschriften werden nicht übersetzt. Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' herunterladen.",
-        "country": "Hier wählst du das Land aus, in dem die Befragung durchgeführt wird. Die Übersetzung wird an die kulturellen Besonderheiten dieses Ziellandes angepasst."
+        "api_key": (
+            "Hier trägst du deinen OpenAI API-Schlüssel ein. Ohne diesen können wir leider nicht loslegen. "
+            "Den aktuellen API-Schlüssel erhältst du von Jonathan Heeckt oder Tobias Bucher."
+        ),
+        "email": (
+            "Bitte gib deine E-Mail-Adresse ein. Du erhältst das fertige Übersetzungsergebnis "
+            "dann direkt per E-Mail zugesendet."
+        ),
+        "model_selection": (
+            "Wähle das GPT-Modell aus, das du verwenden möchtest. "
+            "Für die beste Leistung empfehlen wir dir GPT-4o."
+        ),
+        "batch_size": (
+            "Hier bestimmst du, wie viele Zeilen auf einmal übersetzt werden. "
+            "Wir empfehlen dir eine Batchgröße von 10. Achtung: Umso größer die Batchsize "
+            "umso schneller und günstiger, aber auch umso fehleranfälliger ist die Übersetzung."
+        ),
+        "language_selection": (
+            "Wähle die Ausgangs- und Zielsprache deiner Übersetzung. Sollte deine gewünschte "
+            "Ausgangs-/Zielsprache nicht verfügbar sein, melde dich gerne bei Jonathan Heeckt oder Tobias Bucher."
+        ),
+        "respondent_group": (
+            "Diese Felder helfen der KI, den Kontext deiner Übersetzung besser zu verstehen. "
+            "Gebe die Befragtengruppe und das Thema am besten auf Englisch ein."
+        ),
+        "survey_content": (
+            "Beschreibe hier kurz in 1-2 Sätzen auf Englisch, worum es in deinem Fragebogen geht "
+            "und was das Ziel deiner Befragung ist, damit die KI bestimmte Begriffe besser übersetzen kann.\n\n"
+            "z.B. 'The purpose of the questionnaire is to determine whether dentists recommend "
+            "Listerine as a mouthwash and to understand their reasons for doing so or not.'"
+        ),
+        "file_upload": (
+            "Lade die Datei hoch, die übersetzt werden soll, im CSV-Format.\n\n"
+            "Achtung: Es wird immer die Spalte mit der Überschrift "
+            "'Vergleichstext Ursprungsversion' übersetzt. Das Ergebnis landet "
+            "in der Spalte 'Text zur Übersetzung / Versionsanpassung'. Andere Spalten werden nicht übersetzt.\n\n"
+            "Sobald deine CSV-Datei erfolgreich hochgeladen wurde, erscheint deine CSV-Datei "
+            "als Tabelle im bonsAI Übersetzungsbüro.\n\n"
+            "Durch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. "
+            "Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung "
+            "abgeschlossen ist, kannst du die CSV-Datei als Base64 in Zapier weiterverarbeiten "
+            "(per E-Mail verschicken usw.)."
+        ),
+        "country": (
+            "Hier wählst du das Land aus, in dem die Befragung durchgeführt wird. "
+            "Die Übersetzung wird an die kulturellen Besonderheiten dieses Ziellandes angepasst."
+        )
     }
 
     # Tutorial anzeigen
@@ -75,10 +113,7 @@ def allgemeine_app():
                     "Gib bitte eine gültige E-Mail-Adresse an, damit du das fertige Übersetzungsergebnis "
                     "zugeschickt bekommst.\n"
                 ),
-                "widget": lambda: st.text_input(
-                    "Deine E-Mail-Adresse",
-                    disabled=True,
-                ),
+                "widget": lambda: st.text_input("Deine E-Mail-Adresse", disabled=True),
             },
             {
                 "title": "Schritt 2: API-Schlüssel",
@@ -181,26 +216,24 @@ def allgemeine_app():
                 ),
             },
             {
-                "title": "Schritt 9: Dateiupload",
+                "title": "Schritt 9: CSV-Upload",
                 "content": (
-                    "Lade die Datei hoch, die übersetzt werden soll. Aktuell werden Dateien "
-                    "ausschließlich im Excel-Format akzeptiert.\nAchtung: Es wird immer die Spalte "
-                    "mit der Überschrift 'Text zur Übersetzung / Versionsanpassung' übersetzt, "
-                    "Spalten mit anderen Überschriften werden nicht übersetzt.\n\n"
+                    "Lade die Datei hoch, die übersetzt werden soll. **Achtung: Nur CSV-Format**. "
+                    "Die CSV-Datei muss die Spalten 'Vergleichstext Ursprungsversion' und "
+                    "'Text zur Übersetzung / Versionsanpassung' enthalten. "
+                    "Spalten mit anderen Überschriften werden ignoriert.\n\n"
                 ),
-                "widget": lambda: st.file_uploader(
-                    "Wähle eine Datei", type=["xlsx"], disabled=True
-                ),
+                "widget": lambda: st.file_uploader("Wähle eine CSV-Datei", type=["csv"], disabled=True),
             },
             {
                 "title": "Schritt 10: Übersetzung starten",
                 "content": (
-                    "Sobald deine Excel-Datei erfolgreich hochgeladen wurde, erscheint deine Excel-Datei "
-                    "als Tabelle im bonsAI Übersetzungsbüro.\n\nDurch das Anklicken des Buttons "
-                    "'Übersetzen' startet das Tool mit der Übersetzung. Du kannst den Fortschritt "
-                    "live in der angezeigten Tabelle verfolgen. Sobald die Übersetzung abgeschlossen ist, "
-                    "kannst du die Excel-Datei über den Button 'Übersetzung herunterladen' "
-                    "herunterladen."
+                    "Sobald deine CSV-Datei erfolgreich hochgeladen wurde, erscheint deine CSV-Datei "
+                    "als Tabelle im bonsAI Übersetzungsbüro.\n\n"
+                    "Durch das Anklicken des Buttons 'Übersetzen' startet das Tool mit der Übersetzung. "
+                    "Du kannst den Fortschritt live in der angezeigten Tabelle verfolgen. "
+                    "Sobald die Übersetzung abgeschlossen ist, wird das Ergebnis an Zapier gesendet "
+                    "und du bekommst die Datei (z.B. per E-Mail)."
                 ),
                 "widget": lambda: None,
             },
@@ -231,7 +264,6 @@ def allgemeine_app():
             st.session_state.tutorial_done = True
             st.session_state.tutorial_step = 0
 
-    # Haupt-App-Ansicht
     def main_app():
         def toggle_info(key):
             if key not in st.session_state:
@@ -249,7 +281,7 @@ def allgemeine_app():
             st.info(info_texts["email"])
         email = st.text_input("Bitte gib deine E-Mail-Adresse ein, um das Ergebnis zu erhalten.")
 
-        # API-Schlüssel Eingabefeld mit Infobutton
+        # API-Schlüssel
         col_api, col_info = st.columns([10, 1])
         with col_api:
             st.subheader("API-Schlüssel")
@@ -260,7 +292,7 @@ def allgemeine_app():
             st.info(info_texts["api_key"])
         api_key = st.text_input("Gib deinen OpenAI API-Schlüssel ein", type="password")
 
-        # Auswahl des GPT-Modells
+        # Modellauswahl
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Modellauswahl")
@@ -272,7 +304,7 @@ def allgemeine_app():
         model_options = ["o3-mini", "gpt-4o-mini", "gpt-4o"]
         selected_model = st.selectbox("Wähle das Modell", model_options, index=0)
 
-        # Eingabefeld für die Batchgröße
+        # Batchgröße
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Batchgröße")
@@ -281,11 +313,9 @@ def allgemeine_app():
                 toggle_info("show_batch_size_info")
         if st.session_state.get("show_batch_size_info", False):
             st.info(info_texts["batch_size"])
-        batch_size = st.slider(
-            "Batchgröße", min_value=2, max_value=50, value=10, step=2
-        )
+        batch_size = st.slider("Batchgröße", min_value=2, max_value=50, value=10, step=2)
 
-        # Dropdowns für Sprachen
+        # Sprachauswahl
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Spracheinstellungen")
@@ -307,7 +337,7 @@ def allgemeine_app():
         source_language = st.selectbox("Ausgangssprache", language_options, index=0)
         target_language = st.selectbox("Zielsprache", language_options, index=1)
 
-        # Zielland-Eingabefeld
+        # Zielland
         col1, col2 = st.columns([10, 1])
         with col1:
             st.subheader("Zielland")
@@ -409,28 +439,31 @@ def allgemeine_app():
                 "Gib die Systemanweisung ein", value=system_message, height=200
             )
 
-        # Dateiupload
+        # CSV-Upload
         col1, col2 = st.columns([10, 1])
         with col1:
-            st.subheader("Dateiupload")
+            st.subheader("Dateiupload (CSV)")
         with col2:
             if st.button("ℹ️", key="info_file_upload"):
                 toggle_info("show_file_upload_info")
         if st.session_state.get("show_file_upload_info", False):
             st.info(info_texts["file_upload"])
-        uploaded_file = st.file_uploader("Wähle eine Datei", type=["xlsx"])
+        uploaded_file = st.file_uploader("Wähle eine CSV-Datei", type=["csv"])
 
         st.write("---")
 
         # Button "Übersetzen"
         if uploaded_file is not None:
-            df = pd.read_excel(uploaded_file)
+            # Lies die CSV in einen DataFrame (nur in der Streamlit-App, hier ist Pandas erlaubt)
+            df = pd.read_csv(uploaded_file)
+
+            # Prüfung auf Spalten
             if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
                 st.error(
-                    "Die hochgeladene Excel-Datei enthält nicht die erforderlichen "
+                    "Die hochgeladene CSV-Datei enthält nicht die erforderlichen "
                     "Spalten 'Vergleichstext Ursprungsversion' und/oder "
                     "'Text zur Übersetzung / Versionsanpassung'. "
-                    "Bitte lade eine gültige Datei hoch."
+                    "Bitte lade eine gültige CSV hoch."
                 )
                 return
 
@@ -439,7 +472,6 @@ def allgemeine_app():
 
             translate_button = st.button("Übersetzen")
             if translate_button:
-                # Prüfen, ob eine E-Mail-Adresse vorhanden ist
                 if not email.strip():
                     st.error("Bitte gib eine gültige E-Mail-Adresse ein, bevor du fortfährst.")
                     return
@@ -447,9 +479,9 @@ def allgemeine_app():
                 # Erzeuge eine Job-ID
                 job_id = str(uuid.uuid4())
 
-                # Datei in Base64 umwandeln
-                file_bytes = uploaded_file.read()
-                file_base64 = base64.b64encode(file_bytes).decode("utf-8")
+                # Wandle CSV in Base64
+                csv_bytes = df.to_csv(index=False).encode("utf-8")
+                file_base64 = base64.b64encode(csv_bytes).decode("utf-8")
 
                 # Payload für Zapier
                 payload = {
@@ -468,12 +500,10 @@ def allgemeine_app():
                     "file_base64": file_base64
                 }
 
-                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/22221288/2c8vwqv/"
+                zapier_webhook_url = "DEINE_ZAPIER_HOOK_URL_HIER_EINFÜGEN"
 
                 try:
-                    # Sende die Daten per POST an Zapier
                     response = requests.post(zapier_webhook_url, json=payload, timeout=15)
-
                     if response.status_code == 200:
                         st.success(
                             f"Anfrage an Zapier gesendet. "
@@ -487,15 +517,15 @@ def allgemeine_app():
                             f"Status Code: {response.status_code}\n\n"
                             f"Antwort: {response.text}"
                         )
-
                 except Exception as e:
                     st.error(f"Ein Fehler ist aufgetreten: {e}")
 
         else:
-            st.info("Bitte lade eine Excel-Datei hoch, um fortzufahren.")
+            st.info("Bitte lade eine CSV-Datei hoch, um fortzufahren.")
 
     # Tutorial oder Hauptanwendung anzeigen
     if st.session_state.tutorial_done:
         main_app()
     else:
         show_tutorial()
+
