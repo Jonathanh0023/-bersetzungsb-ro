@@ -459,7 +459,7 @@ def allgemeine_app():
                     "survey_content": survey_content
                 }
 
-                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/DEIN_ZAPIER_HOOK"
+                zapier_webhook_url = "https://hooks.zapier.com/hooks/catch/22221288/2c8vwqv/"
 
                 try:
                     response = requests.post(zapier_webhook_url, json=payload, timeout=15)
