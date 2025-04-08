@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk/v3";d
+import { task } from "@trigger.dev/sdk/v3";
 import OpenAI from "openai";
 import * as XLSX from "xlsx";
 import { createClient } from "@supabase/supabase-js";
