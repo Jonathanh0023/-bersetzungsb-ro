@@ -1,7 +1,7 @@
 # config.py
 import streamlit as st
 
-def set_page_config():
+def set_page_config():d
     st.set_page_config(
         page_title="bonsAI Übersetzungsbüro",
         page_icon="https://sw01.rogsurvey.de/data/bonsai/Kara_23_19/logo_Bonsa_BONSAI_neu.png",
