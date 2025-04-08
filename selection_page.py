@@ -201,6 +201,29 @@ def selection_page():
             on_click=lambda: select_app("transkript_verarbeitung"),
             key="transkript_verarbeitung_button",
         )
+        
+    # Neue Zeile für Alle Jobs App
+    col10 = st.columns([1, 10, 1])[1]  # Nur die mittlere Spalte verwenden
+    with col10:
+        st.markdown(
+            f"""
+            <style>
+            div.stButton > button:first-child {{
+                height: 150px;
+                width: 100%;
+                font-size: 18px;
+                color: #3c3c3c;
+                border-radius: 15px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button(
+            "**Alle Jobs**\n\n(Hier kannst du den Status deiner Übersetzungs- und Verarbeitungsaufträge einsehen)",
+            on_click=lambda: select_app("jobs"),
+            key="jobs_button",
+        )
 
 
 def select_app(app_name):
