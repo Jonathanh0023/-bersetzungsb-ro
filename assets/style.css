@@ -1,0 +1,12 @@
+/* assets/style.css */
+h1 {
+    font-size: 30px !important;
+}
+
+h2 {
+    font-size: 18px !important;
+}
+
+div.stButton > button {
+    font-size: 14px !important;
+}
