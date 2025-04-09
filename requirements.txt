@@ -1,0 +1,11 @@
+streamlit
+pandas
+openai
+tenacity
+xlsxwriter
+openpyxl
+PyGithub
+python-pptx
+python-docx
+replicate
+requests
