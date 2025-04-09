@@ -257,9 +257,9 @@ def powerpoint_app():
                     "Vigtige retningslinjer:\n"
                     "1. Bevar den oprindelige betydning og tone\n"
                     "2. Brug naturligt, moderne dansk\n"
-                    "3. Bevar al formatering, linjeskift og tekststil (fed, kursiv osv.)\n"
-                    "4. Sikre et flydende sprog passende til konteksten\n"
-                    "5. Behold fagudtryk eller egennavne, medmindre der findes en standard dansk ækvivalent\n\n"
+                    "3. Bevar al formatering, linjeskift og tekststil\n"
+                    "4. Sikr et flydende sprog, der passer til konteksten\n"
+                    "5. Behold tekniske termer eller egennavne, medmindre der findes en standard dansk ækvivalent\n\n"
                     "Hvis teksten er for kort eller allerede er på dansk, svar med en enkelt bindestreg '-'"
                 ),
                 "Bulgarisch": (
@@ -267,286 +267,274 @@ def powerpoint_app():
                     "Важни насоки:\n"
                     "1. Запазете оригиналното значение и тон\n"
                     "2. Използвайте естествен, съвременен български език\n"
-                    "3. Запазете цялото форматиране, преходите между редовете и стила на текста\n"
+                    "3. Запазете цялото форматиране, преходи между редовете и стил на текста\n"
                     "4. Осигурете плавен език, подходящ за контекста\n"
-                    "5. Запазете технически термини или собствени имена, освен ако няма стандартен български еквивалент\n\n"
+                    "5. Запазете техническите термини или собствените имена, освен ако няма стандартен български еквивалент\n\n"
                     "Ако текстът е твърде кратък или вече е на български, отговорете с единично тире '-'"
                 ),
                 "Holländisch": (
                     "Je bent een professionele vertaler. Vertaal de volgende tekst naar het Nederlands.\n\n"
                     "Belangrijke richtlijnen:\n"
-                    "1. Behoud de oorspronkelijke betekenis en toon\n"
+                    "1. Behoud de originele betekenis en toon\n"
                     "2. Gebruik natuurlijk, hedendaags Nederlands\n"
-                    "3. Behoud alle opmaak, regeleinden en tekststijl (vet, cursief, enz.)\n"
+                    "3. Behoud alle opmaak, regeleinden en tekststijl\n"
                     "4. Zorg voor vloeiende taal die past bij de context\n"
-                    "5. Behoud technische termen of eigennamen, tenzij er een standaard Nederlands equivalent bestaat\n\n"
+                    "5. Behoud technische termen of eigennamen tenzij er een standaard Nederlands equivalent bestaat\n\n"
                     "Als de tekst te kort is of al in het Nederlands is, antwoord dan met een enkel streepje '-'"
                 ),
                 "Ungarisch": (
-                    "Ön professzionális fordító. Fordítsa le a következő szöveget magyarra.\n\n"
+                    "Ön professzionális fordító. Fordítsa le a következő szöveget magyar nyelvre.\n\n"
                     "Fontos irányelvek:\n"
-                    "1. Tartsa meg az eredeti jelentést és hangnemet\n"
+                    "1. Őrizze meg az eredeti jelentést és hangnemet\n"
                     "2. Használjon természetes, modern magyar nyelvet\n"
-                    "3. Őrizze meg az összes formázást, sortörést és szövegstílust (félkövér, dőlt, stb.)\n"
-                    "4. Biztosítson folyékony, a kontextushoz illő nyelvet\n"
-                    "5. Tartsa meg a szakkifejezéseket vagy tulajdonneveket, hacsak nincs standard magyar megfelelő\n\n"
+                    "3. Őrizze meg az összes formázást, sortörést és szövegstílust\n"
+                    "4. Biztosítson folyékony, a kontextushoz illő nyelvezetet\n"
+                    "5. Tartsa meg a műszaki kifejezéseket vagy tulajdonneveket, hacsak nincs szabványos magyar megfelelőjük\n\n"
                     "Ha a szöveg túl rövid vagy már magyar nyelvű, válaszoljon egyetlen kötőjellel '-'"
                 ),
                 "Polnisch": (
-                    "Jesteś profesjonalnym tłumaczem. Przetłumacz poniższy tekst na język polski.\n\n"
+                    "Jesteś profesjonalnym tłumaczem. Przetłumacz następujący tekst na język polski.\n\n"
                     "Ważne wytyczne:\n"
                     "1. Zachowaj oryginalne znaczenie i ton\n"
                     "2. Używaj naturalnego, współczesnego języka polskiego\n"
-                    "3. Zachowaj całe formatowanie, podziały wierszy i styl tekstu (pogrubienie, kursywa, itp.)\n"
+                    "3. Zachowaj całe formatowanie, podziały wierszy i styl tekstu\n"
                     "4. Zapewnij płynny język odpowiedni do kontekstu\n"
                     "5. Zachowaj terminy techniczne lub nazwy własne, chyba że istnieje standardowy polski odpowiednik\n\n"
-                    "Jeśli tekst jest zbyt krótki lub jest już w języku polskim, odpowiedz pojedynczym myślnikiem '-'"
+                    "Jeśli tekst jest zbyt krótki lub jest już po polsku, odpowiedz pojedynczym myślnikiem '-'"
                 )
             }
-
-            # Wähle den richtigen Systemprompt basierend auf dem Modus
+            # Wähle das entsprechende Template basierend auf Modus und Sprache
             templates = editor_templates if mode == "Editor" else translator_templates
-            system_prompt = templates.get(target_language, templates["US English"])
+            system_prompt = templates[target_language]
             
-            # Füge den zusätzlichen Kontext zum Systemprompt hinzu, wenn vorhanden
-            if additional_context and len(additional_context.strip()) > 0:
-                system_prompt += f"\n\nAdditional context: {additional_context}"
-
-            # Führe API-Anfrage durch
+            # Füge zusätzlichen Kontext hinzu, wenn vorhanden
+            if additional_context:
+                system_prompt += f"\n\nZusätzlicher Kontext:\n{additional_context}"
+            
+            # Debug: Zeige System Prompt
+            with st.expander("Debug: System Prompt"):
+                st.code(system_prompt, language="text")
+            
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text}
-                ],
-                temperature=0.7,
-                max_tokens=4000,
-                presence_penalty=0
+                ]
             )
-
-            # Extrahiere den korrigierten Text
-            corrected_text = response.choices[0].message.content.strip()
-            
-            # Entferne '-' wenn das die einzige Antwort ist
-            if corrected_text == '-':
-                corrected_text = text  # Behalte den Originaltext bei
-                
-            return corrected_text
+            return response.choices[0].message.content
         except Exception as e:
             st.error(f"Fehler bei der GPT-Anfrage: {str(e)}")
-            return text  # Bei Fehlern Originaltext zurückgeben
-    
-    def generate_diff_html(original, corrected):
-        """Generate HTML that shows the difference between original and corrected text"""
-        if original == corrected:
-            return f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 5px;'>{escape(original)}</div>"
-        
-        diff = difflib.ndiff(original.splitlines(), corrected.splitlines())
-        
-        html_parts = []
-        for line in diff:
-            if line.startswith('+ '):
-                html_parts.append(f"<div style='background-color: #e6ffed; color: #22863a; padding: 2px 5px;'>{escape(line[2:])}</div>")
-            elif line.startswith('- '):
-                html_parts.append(f"<div style='background-color: #ffeef0; color: #cb2431; padding: 2px 5px; text-decoration: line-through;'>{escape(line[2:])}</div>")
-            elif line.startswith('  '):
-                html_parts.append(f"<div style='padding: 2px 5px;'>{escape(line[2:])}</div>")
-        
-        return "".join(html_parts)
+            return text
 
-    def create_summary_document(data_df):
-        """Erstellt ein Word-Dokument mit Original- und korrigiertem Text"""
-        doc = Document()
+    def create_diff_html(original, corrected):
+        if corrected == '-' or original == corrected:
+            return "Keine Änderungen"
         
-        # Titel hinzufügen
-        doc.add_heading('PowerPoint-Korrektur-Zusammenfassung', level=1)
+        def split_into_words(text):
+            return text.replace('\n', ' \n ').split()
         
-        # Füge Informationen zum Modus und zur Zielsprache hinzu
-        doc.add_paragraph(f"Modus: {mode}")
-        doc.add_paragraph(f"Zielsprache: {target_language}")
+        original_words = split_into_words(original)
+        corrected_words = split_into_words(corrected)
         
-        # Zusätzlicher Kontext, falls vorhanden
-        if additional_context:
-            doc.add_paragraph(f"Zusätzlicher Kontext: {additional_context}")
+        matcher = difflib.SequenceMatcher(None, original_words, corrected_words)
         
-        # Überschrift für die Korrekturen
-        doc.add_heading('Korrekturen nach Folien', level=2)
+        html = ['''
+            <div style="font-family: arial; 
+                        white-space: pre-wrap; 
+                        line-height: 1.5; 
+                        font-size: 1.1em;">
+        ''']
         
-        # Für jede korrigierte Folie
-        for _, row in data_df.iterrows():
-            slide_num = row['slide_number']
-            original = row['original_text']
-            corrected = row['corrected_text']
-            
-            # Nur Änderungen anzeigen
-            if original != corrected:
-                # Überschrift für die Folie
-                doc.add_heading(f'Folie {slide_num}', level=3)
-                
-                # Original Text mit roter Markierung
-                doc.add_paragraph("Original:")
-                p = doc.add_paragraph(original)
-                for run in p.runs:
-                    run.font.color.rgb = RGBColor(200, 0, 0)
-                
-                # Korrigierter Text mit grüner Markierung
-                doc.add_paragraph("Korrigiert:")
-                p = doc.add_paragraph(corrected)
-                for run in p.runs:
-                    run.font.color.rgb = RGBColor(0, 150, 0)
-                
-                # Trennlinie
-                doc.add_paragraph("-----------------------------")
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'replace':
+                html.append(f'<span style="background-color: #ffcdd2; color: #c62828; text-decoration: line-through; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(original_words[i1:i2])}</span>')
+                html.append(f'<span style="background-color: #c8e6c9; color: #2e7d32; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(corrected_words[j1:j2])}</span>')
+            elif tag == 'delete':
+                html.append(f'<span style="background-color: #ffcdd2; color: #c62828; text-decoration: line-through; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(original_words[i1:i2])}</span>')
+            elif tag == 'insert':
+                html.append(f'<span style="background-color: #c8e6c9; color: #2e7d32; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(corrected_words[j1:j2])}</span>')
+            elif tag == 'equal':
+                html.append(f'<span style="color: #37474f;">{" ".join(original_words[i1:i2])}</span>')
         
-        return doc
+        html.append('</div>')
+        return "".join(html)
 
-    def create_output_document(data_df, uploaded_file):
-        """Kopiere die originale Präsentation und ersetze die Texte"""
-        output_prs = Presentation(uploaded_file)
-
-        # Wir erstellen ein Dictionary, um die Zuordnung von Folien und Texten zu speichern
-        slide_texts = {}
-        for _, row in data_df.iterrows():
-            slide_num = row['slide_number']
-            original_text = row['original_text']
-            corrected_text = row['corrected_text']
-            
-            if slide_num not in slide_texts:
-                slide_texts[slide_num] = []
-            
-            slide_texts[slide_num].append((original_text, corrected_text))
-        
-        # Für jede Folie in der Präsentation
-        for slide_idx, slide in enumerate(output_prs.slides, 1):
-            if slide_idx in slide_texts:
-                for original_text, corrected_text in slide_texts[slide_idx]:
-                    # Suche alle TextFrames in dieser Folie
-                    for shape in slide.shapes:
-                        if hasattr(shape, "text") and shape.text.strip() == original_text:
-                            # Wenn der Text übereinstimmt, ersetze ihn
-                            shape.text = corrected_text
-        
-        return output_prs
-
-    # Hauptprogrammlogik
+    # Hauptlogik: Verarbeite die Präsentation erst nach Klick auf den Button "Prozess starten"
     if uploaded_file is not None:
-        # Prüfe, ob bereits ein DataFrame mit Texten existiert oder erstelle ein neues
-        if "powerpoint_texts" not in st.session_state:
-            with st.spinner("Extrahiere Texte aus der PowerPoint-Datei..."):
-                st.session_state.powerpoint_texts = extract_text_from_pptx(uploaded_file)
-        
-        df = st.session_state.powerpoint_texts
-        
-        # Zeige die Anzahl der gefundenen Texte an
-        st.info(f"{len(df)} Textelemente in {df['slide_number'].nunique()} Folien gefunden.")
-        
-        # Selektiere nur ausstehende Texte zur Korrektur
-        pending_df = df[df['status'] == 'ausstehend']
-        
-        if not pending_df.empty:
-            col1, col2 = st.columns([1, 5])
+        if st.button("Prozess starten"):
+            st.session_state.corrections_df = extract_text_from_pptx(uploaded_file)
             
+            # Zeige Gesamtanzahl der Folien
+            total_slides = st.session_state.corrections_df['slide_number'].max()
+            st.info(f"Präsentation enthält {total_slides} Folien")
+            
+            # Progress Bar für den Gesamtfortschritt
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            total_items = len(st.session_state.corrections_df)
+            
+            # GPT-Korrektur für jeden Textelement durchführen
+            for idx, row in st.session_state.corrections_df.iterrows():
+                current_slide = row['slide_number']
+                status_text.text(f"Überprüfe Folie {current_slide} von {total_slides} ({idx + 1}/{total_items} Textelemente)")
+                progress_bar.progress((idx + 1) / total_items)
+                
+                corrected = check_text_with_gpt(row['original_text'])
+                st.session_state.corrections_df.at[idx, 'corrected_text'] = corrected
+            
+            progress_bar.empty()
+            status_text.empty()
+            st.success(f"Überprüfung abgeschlossen! {total_items} Textelemente in {total_slides} Folien wurden verarbeitet.")
+        
+        # Anzeige der Korrekturen (falls bereits verarbeitet)
+        if 'corrections_df' in st.session_state:
+            col1, col2, col3 = st.columns(3)
             with col1:
-                if st.button("Alle korrigieren"):
-                    for idx, row in pending_df.iterrows():
-                        with st.spinner(f"Korrigiere Text {idx+1} von {len(pending_df)}..."):
-                            original_text = row['original_text']
-                            corrected_text = check_text_with_gpt(original_text)
-                            df.at[idx, 'corrected_text'] = corrected_text
-                            df.at[idx, 'status'] = 'korrigiert'
-                    
-                    st.session_state.powerpoint_texts = df
-                    st.success("Alle Texte wurden korrigiert!")
-                    st.rerun()
-            
+                st.header("Originaltext")
             with col2:
-                # Zeige den Fortschritt an
-                progress = (len(df) - len(pending_df)) / len(df) if len(df) > 0 else 0
-                st.progress(progress)
-                st.caption(f"{len(df) - len(pending_df)} von {len(df)} Texten korrigiert ({progress:.0%})")
-        
-        # Zeige die Texte und ihre Korrekturen an
-        if not df.empty:
-            # Nur zeigen, wenn mindestens ein Text korrigiert wurde
-            corrected_df = df[df['status'] == 'korrigiert']
-            if not corrected_df.empty:
-                st.subheader("Korrigierte Texte:")
-                
-                # Gruppiere nach Foliennummer für bessere Übersicht
-                for slide_num in sorted(corrected_df['slide_number'].unique()):
-                    slide_df = corrected_df[corrected_df['slide_number'] == slide_num]
-                    
-                    with st.expander(f"Folie {slide_num} ({len(slide_df)} Texte)"):
-                        for idx, row in slide_df.iterrows():
-                            st.markdown(f"**Text {idx+1}:**")
-                            
-                            # Zeige die Texte nur an, wenn sie unterschiedlich sind
-                            original = row['original_text']
-                            corrected = row['corrected_text']
-                            
-                            if original != corrected:
-                                st.markdown("**Original:**")
-                                st.text(original)
-                                st.markdown("**Korrigiert:**")
-                                st.text(corrected)
-                                # HTML-Diff anzeigen
-                                st.markdown(generate_diff_html(original, corrected), unsafe_allow_html=True)
-                            else:
-                                st.info("Keine Änderungen notwendig.")
-                            
-                            st.markdown("---")
-                
-                # Herunterladen der korrigierten Dokumente
-                col1, col2 = st.columns(2)
+                st.header("Korrigierter Text")
+            with col3:
+                st.header("Änderungen")
+            
+            for idx, row in st.session_state.corrections_df.iterrows():
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    # Word-Bericht herunterladen
-                    summary_doc = create_summary_document(corrected_df)
-                    
-                    # Word-Dokument in BytesIO-Objekt speichern
-                    doc_bytes = BytesIO()
-                    summary_doc.save(doc_bytes)
-                    doc_bytes.seek(0)
-                    
-                    st.download_button(
-                        label="Korrekturbericht herunterladen (DOCX)",
-                        data=doc_bytes,
-                        file_name="powerpoint-korrekturbericht.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    st.text_area(
+                        f"Folie {row['slide_number']} - Original",
+                        row['original_text'],
+                        key=f"original_{idx}",
+                        disabled=True
                     )
                 
                 with col2:
-                    # Korrigierte PowerPoint herunterladen
-                    output_prs = create_output_document(df, uploaded_file)
-                    
-                    # PowerPoint in BytesIO-Objekt speichern
-                    pptx_bytes = BytesIO()
-                    output_prs.save(pptx_bytes)
-                    pptx_bytes.seek(0)
-                    
-                    st.download_button(
-                        label="Korrigierte Präsentation herunterladen (PPTX)",
-                        data=pptx_bytes,
-                        file_name="korrigierte-praesentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    corrected = st.text_area(
+                        f"Folie {row['slide_number']} - Korrigiert",
+                        row['corrected_text'],
+                        key=f"corrected_{idx}"
                     )
-    else:
-        # Zeige Beispieltext und Anweisungen
-        st.info("Bitte lade eine PowerPoint-Datei hoch, um zu beginnen.")
+                    st.session_state.corrections_df.at[idx, 'corrected_text'] = corrected
+                
+                with col3:
+                    diff_html = create_diff_html(row['original_text'], corrected)
+                    st.markdown(diff_html, unsafe_allow_html=True)
         
-        # Beispiel für den Benutzer
-        st.markdown("""
-        ### So funktioniert es:
-        
-        1. Lade deine PowerPoint-Datei im Seitenmenü hoch
-        2. Wähle den gewünschten Modus (Editor oder Übersetzer)
-        3. Wähle die Zielsprache
-        4. Klicke auf "Alle korrigieren", um die KI die Texte bearbeiten zu lassen
-        5. Überprüfe die Änderungen 
-        6. Lade die korrigierte Präsentation oder den Korrekturbericht herunter
-        
-        Die App erkennt automatisch Texte in deiner Präsentation und ignoriert dabei Kopf- und Fußzeilen sowie Foliennummern.
-        """)
-        
+        # Word-Dokument Erstellen Button
+        if st.button("Word-Dokument erstellen"):
+            def create_word_document():
+                def clean_text_for_word(text):
+                    if not isinstance(text, str):
+                        return ""
+                    # Entferne Steuerzeichen, behalte Zeilenumbrüche
+                    text = ''.join(char for char in text if char == '\n' or (ord(char) >= 32 and ord(char) != 127))
+                    text = re.sub(r'\n{3,}', '\n\n', text)
+                    return text
+
+                def create_word_diff(original, corrected):
+                    if corrected == '-' or original == corrected:
+                        return "Keine Änderungen"
+                    
+                    def split_into_words(text):
+                        lines = text.split('\n')
+                        result = []
+                        for line in lines:
+                            result.extend(line.split())
+                            result.append('\n')
+                        return result[:-1]
+                    
+                    original_words = split_into_words(original)
+                    corrected_words = split_into_words(corrected)
+                    matcher = difflib.SequenceMatcher(None, original_words, corrected_words)
+                    
+                    result = []
+                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                        if tag == 'replace':
+                            result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                            result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
+                        elif tag == 'delete':
+                            result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                        elif tag == 'insert':
+                            result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
+                        elif tag == 'equal':
+                            result.append(('equal', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
+                    return result
+
+                try:
+                    doc = Document()
+                    doc.add_heading('Korrekturübersicht PowerPoint-Präsentation', 0)
+                    
+                    header_style = doc.styles.add_style('HeaderStyle', 1)
+                    header_style.font.bold = True
+                    header_style.font.size = Pt(11)
+                    
+                    table = doc.add_table(rows=1, cols=3)
+                    table.style = 'Table Grid'
+                    table.autofit = False
+                    for i, width in enumerate([1667, 1667, 1666]):
+                        table.columns[i].width = width
+                    
+                    header_cells = table.rows[0].cells
+                    header_cells[0].text = "Originaltext"
+                    header_cells[1].text = "Korrigierter Text"
+                    header_cells[2].text = "Änderungen"
+                    
+                    for cell in header_cells:
+                        cell.paragraphs[0].style = header_style
+                        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    for _, row in st.session_state.corrections_df.iterrows():
+                        title_row = table.add_row()
+                        title_cell = title_row.cells[0]
+                        title_cell.merge(title_row.cells[-1])
+                        title_cell.text = f"Folie {row['slide_number']}"
+                        title_cell.paragraphs[0].style = header_style
+                        
+                        content_row = table.add_row()
+                        cells = content_row.cells
+                        
+                        cells[0].text = clean_text_for_word(row['original_text'])
+                        cells[1].text = clean_text_for_word(row['corrected_text'])
+                        
+                        diff_paragraph = cells[2].paragraphs[0]
+                        diff_results = create_word_diff(
+                            clean_text_for_word(row['original_text']),
+                            clean_text_for_word(row['corrected_text'])
+                        )
+                        
+                        if isinstance(diff_results, str):
+                            diff_paragraph.add_run(diff_results)
+                        else:
+                            for diff_type, text in diff_results:
+                                text_parts = text.split('\n')
+                                for i, part in enumerate(text_parts):
+                                    if part.strip():
+                                        run = diff_paragraph.add_run(part)
+                                        if diff_type == 'delete':
+                                            run.font.color.rgb = RGBColor(198, 40, 40)
+                                            run.font.strike = True
+                                        elif diff_type == 'insert':
+                                            run.font.color.rgb = RGBColor(46, 125, 50)
+                                    if i < len(text_parts) - 1:
+                                        diff_paragraph.add_run('\n')
+                    
+                    doc_buffer = BytesIO()
+                    doc.save(doc_buffer)
+                    doc_buffer.seek(0)
+                    return doc_buffer
+                except Exception as e:
+                    st.error(f"Fehler beim Erstellen des Word-Dokuments: {str(e)}")
+                    return None
+            
+            doc_buffer = create_word_document()
+            if doc_buffer is not None:
+                st.download_button(
+                    label="Word-Dokument herunterladen",
+                    data=doc_buffer,
+                    file_name="powerpoint_korrekturen.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key="word_download"
+                )
+
 if __name__ == "__main__":
     powerpoint_app()

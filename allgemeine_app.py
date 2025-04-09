@@ -16,7 +16,7 @@ def allgemeine_app():
     # Einstellungen für die allgemeine App
     col1, col2 = st.columns([8, 2])
     with col1:
-        st.markdown(f"<h1>Allgemeines Übersetzungsbüro 📖</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1>Allgemeines Übersetzungsbüro 📚</h1>", unsafe_allow_html=True)
     with col2:
         st.markdown(
             "<div style='display: flex; justify-content: flex-end;'>",
@@ -251,222 +251,276 @@ def allgemeine_app():
                 toggle_info("show_api_key_info")
         if st.session_state.get("show_api_key_info", False):
             st.info(info_texts["api_key"])
-        api_key = st.text_input("Gib deinen OpenAI API-Schlüssel ein", type="password", key="api_key_input")
+        api_key = st.text_input("Gib deinen OpenAI API-Schlüssel ein", type="password")
+        
+        # Sofort API-Schlüssel validieren, wenn ein Wert eingegeben wurde
+        if api_key:
+            validate_button = st.button("API-Schlüssel validieren")
+            if validate_button:
+                with st.spinner("API-Schlüssel wird validiert..."):
+                    is_valid, message = validate_openai_key(api_key)
+                    if is_valid:
+                        st.success(message)
+                    else:
+                        st.error(message)
 
-        # Modellauswahl mit Infobutton
-        col_model, col_info = st.columns([10, 1])
-        with col_model:
+        # Auswahl des GPT-Modells
+        col1, col2 = st.columns([10, 1])
+        with col1:
             st.subheader("Modellauswahl")
-        with col_info:
+        with col2:
             if st.button("ℹ️", key="info_model_selection"):
                 toggle_info("show_model_selection_info")
         if st.session_state.get("show_model_selection_info", False):
             st.info(info_texts["model_selection"])
-        model_options = ["gpt-4o", "gpt-4o-mini", "gpt-o1-mini", "o3-mini"]
-        selected_model = st.selectbox("Wähle ein Modell", model_options, index=1)
+        model_options = ["o3-mini", "gpt-4o-mini", "gpt-4o"]
+        selected_model = st.selectbox("Wähle das Modell", model_options, index=0)
 
-        # Batchgröße mit Infobutton
-        col_batch, col_info = st.columns([10, 1])
-        with col_batch:
+        # Eingabefeld für die Batchgröße
+        col1, col2 = st.columns([10, 1])
+        with col1:
             st.subheader("Batchgröße")
-        with col_info:
+        with col2:
             if st.button("ℹ️", key="info_batch_size"):
                 toggle_info("show_batch_size_info")
         if st.session_state.get("show_batch_size_info", False):
             st.info(info_texts["batch_size"])
-        batch_size = st.slider("Batchgröße", min_value=2, max_value=50, value=10, step=2)
+        batch_size = st.slider(
+            "Batchgröße", min_value=2, max_value=50, value=10, step=2
+        )
 
-        # Ausgangs- und Zielsprache mit Infobutton
-        col_lang, col_info = st.columns([10, 1])
-        with col_lang:
-            st.subheader("Sprachen")
-        with col_info:
+        # Dropdowns für Sprachen
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.subheader("Spracheinstellungen")
+        with col2:
             if st.button("ℹ️", key="info_language_selection"):
                 toggle_info("show_language_selection_info")
         if st.session_state.get("show_language_selection_info", False):
             st.info(info_texts["language_selection"])
+        language_options = [
+            "English",
+            "German",
+            "French",
+            "Spanish",
+            "Italian",
+            "Polish",
+            "Arabic",
+            "Swedish"
+        ]
+        source_language = st.selectbox("Ausgangssprache", language_options, index=0)
+        target_language = st.selectbox("Zielsprache", language_options, index=1)
 
-        col1, col2 = st.columns(2)
+        # Zielland-Eingabefeld mit Info-Icon
+        col1, col2 = st.columns([10, 1])
         with col1:
-            source_language = st.selectbox(
-                "Ausgangssprache", 
-                ["English", "German", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"]
-            )
-        with col2:
-            target_language = st.selectbox(
-                "Zielsprache", 
-                ["German", "English", "French", "Spanish", "Italian", "Polish", "Dutch", "Portuguese", "Russian", "Turkish", "Arabic", "Chinese", "Japanese", "Korean", "Vietnamese", "Other"]
-            )
-
-        # Zielland mit Infobutton
-        col_country, col_info = st.columns([10, 1])
-        with col_country:
             st.subheader("Zielland")
-        with col_info:
+        with col2:
             if st.button("ℹ️", key="info_country"):
                 toggle_info("show_country_info")
         if st.session_state.get("show_country_info", False):
             st.info(info_texts["country"])
-        country = st.text_input("Land, in dem die Befragung durchgeführt wird, z.B. 'Germany'")
+        country = st.text_input("Land, in dem die Befragung durchgeführt wird (z.B. 'Germany'): ")
 
-        # Befragtengruppe und Thema mit Infobutton
-        col_resp, col_info = st.columns([10, 1])
-        with col_resp:
+        # Neue Eingabefelder für Befragtengruppe und Thema der Befragung
+        col1, col2 = st.columns([10, 1])
+        with col1:
             st.subheader("Befragtengruppe und Thema")
-        with col_info:
+        with col2:
             if st.button("ℹ️", key="info_respondent_group"):
                 toggle_info("show_respondent_group_info")
         if st.session_state.get("show_respondent_group_info", False):
             st.info(info_texts["respondent_group"])
+        respondent_group = st.text_input(
+            "Befragtengruppe auf Englisch eingeben, z.B. 'Dentists'"
+        )
+        survey_topic = st.text_input(
+            "Thema der Befragung auf Englisch eingeben, z.B. 'dental hygiene'"
+        )
 
-        col1, col2 = st.columns(2)
+        # Fragebogen
+        col1, col2 = st.columns([10, 1])
         with col1:
-            respondent_group = st.text_input("Befragtengruppe auf Englisch eingeben, z.B. 'Dentists'")
+            st.subheader("Fragebogen")
         with col2:
-            survey_topic = st.text_input("Thema der Befragung auf Englisch eingeben, z.B. 'dental hygiene'")
-
-        # Fragebogeninformationen mit Infobutton
-        col_survey, col_info = st.columns([10, 1])
-        with col_survey:
-            st.subheader("Fragebogeninformationen")
-        with col_info:
             if st.button("ℹ️", key="info_survey_content"):
                 toggle_info("show_survey_content_info")
         if st.session_state.get("show_survey_content_info", False):
             st.info(info_texts["survey_content"])
-        survey_content = st.text_area("Beschreibe hier in 1-2 Sätzen das Ziel und das Thema des Fragebogens auf Englisch.", height=100)
+        survey_content = st.text_area(
+            "Beschreibe hier in 1-2 Sätzen das Ziel und das Thema des Fragebogens auf Englisch.",
+            height=100,
+        )
 
-        # E-Mail-Adresse mit Infobutton
-        col_email, col_info = st.columns([10, 1])
-        with col_email:
-            st.subheader("E-Mail-Adresse für Benachrichtigung")
-        with col_info:
+        # E-Mail-Adresse für den Erhalt der Übersetzung
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.subheader("E-Mail-Adresse")
+        with col2:
             if st.button("ℹ️", key="info_email"):
                 toggle_info("show_email_info")
         if st.session_state.get("show_email_info", False):
             st.info(info_texts["email"])
         email = st.text_input("E-Mail-Adresse eingeben")
 
-        # Datei hochladen mit Infobutton
-        col_file, col_info = st.columns([10, 1])
-        with col_file:
-            st.subheader("Datei hochladen")
-        with col_info:
+        # Dynamisch generierte Systemanweisung
+        system_message = generate_system_message(
+            source_language,
+            respondent_group,
+            survey_topic,
+            target_language,
+            survey_content,
+            country
+        )
+
+        # Zusammenklappbare Systemanweisung mit Warnhinweis
+        with st.expander(
+            "Systemanweisung (Achtung: Nur für fortgeschrittene Anwender)"
+        ):
+            custom_system_message = st.text_area(
+                "Gib die Systemanweisung ein", value=system_message, height=200
+            )
+
+        # Funktion zur Bereinigung des Textes
+        def clean_text(text):
+            if pd.isna(text):
+                return text
+            # Normalisiere Whitespace (entfernt überflüssige Leerzeichen, Umbrüche)
+            text = ' '.join(text.split())
+            return text
+
+        # Dateiupload
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.subheader("Dateiupload")
+        with col2:
             if st.button("ℹ️", key="info_file_upload"):
                 toggle_info("show_file_upload_info")
         if st.session_state.get("show_file_upload_info", False):
             st.info(info_texts["file_upload"])
-
         uploaded_file = st.file_uploader("Wähle eine Datei", type=["xlsx"])
 
         if uploaded_file is not None:
-            try:
-                df = pd.read_excel(uploaded_file, engine="openpyxl")
-                # Überprüfen, ob die erforderlichen Spalten vorhanden sind
-                if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
-                    st.error("Die Datei muss die Spalten 'Vergleichstext Ursprungsversion' und 'Text zur Übersetzung / Versionsanpassung' enthalten.")
-                else:
-                    st.markdown("### Vorschau der Datei")
-                    st.dataframe(df.head(5))
+            df = pd.read_excel(uploaded_file)
+            if "Vergleichstext Ursprungsversion" not in df.columns or "Text zur Übersetzung / Versionsanpassung" not in df.columns:
+                st.error("Die hochgeladene Excel-Datei enthält nicht die erforderlichen Spalten 'Vergleichstext Ursprungsversion' und/oder 'Text zur Übersetzung / Versionsanpassung'. Bitte laden Sie eine gültige Datei hoch.")
+                return
 
-                    # Generiere eine Systemanweisung für die Übersetzung
-                    system_message = generate_system_message(
-                        source_language,
-                        respondent_group,
-                        survey_topic,
-                        target_language,
-                        survey_content,
-                        country
-                    )
+            # Vorverarbeitung der Texte
+            df["Vergleichstext Ursprungsversion"] = df["Vergleichstext Ursprungsversion"].apply(clean_text)
 
-                    # Übersetzungsbutton
-                    if st.button("Übersetzen"):
-                        # Validiere API-Schlüssel
-                        is_valid, message = validate_openai_key(api_key)
-                        if not is_valid:
-                            st.error(message)
-                        elif not email or not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                            st.error("Bitte gib eine gültige E-Mail-Adresse ein.")
+            st.write("Originaltext")
+            st.dataframe(df)
+
+            # Button "Übersetzen" hier platzieren
+            translate_button = st.button("Übersetzen")
+            if translate_button:
+                # Erstelle eine Liste für die Validierungsmeldungen
+                validation_errors = []
+                
+                # Validiere alle Eingaben bevor der Job gestartet wird
+                if not api_key:
+                    validation_errors.append("- Bitte gib einen API-Schlüssel ein.")
+                
+                if not email:
+                    validation_errors.append("- Bitte gib eine E-Mail-Adresse ein.")
+                
+                if not country:
+                    validation_errors.append("- Bitte gib das Zielland ein.")
+                
+                if not respondent_group:
+                    validation_errors.append("- Bitte gib die Befragtengruppe ein.")
+                
+                if not survey_topic:
+                    validation_errors.append("- Bitte gib das Thema der Befragung ein.")
+                
+                if not survey_content:
+                    validation_errors.append("- Bitte beschreibe das Ziel und Thema des Fragebogens.")
+                
+                if not uploaded_file:
+                    validation_errors.append("- Bitte lade eine Excel-Datei hoch.")
+                
+                # Wenn Validierungsfehler vorhanden sind, zeige sie an und beende die Funktion
+                if validation_errors:
+                    st.error("Bitte fülle alle erforderlichen Felder aus:\n" + "\n".join(validation_errors))
+                    return
+                
+                # Validiere den OpenAI API-Key
+                with st.spinner("API-Schlüssel wird validiert..."):
+                    is_valid, message = validate_openai_key(api_key)
+                    if not is_valid:
+                        st.error(f"Der API-Schlüssel ist ungültig: {message}")
+                        return
+                
+                try:
+                    # Fortschrittsanzeige
+                    with st.spinner("Übersetzungsjob wird gestartet..."):
+                        # Datei als Base64 kodieren
+                        output_buffer = BytesIO()
+                        with pd.ExcelWriter(output_buffer, engine="xlsxwriter") as writer:
+                            df.to_excel(writer, index=False)
+                        output_buffer.seek(0)
+                        file_data = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
+                        
+                        # Daten für die Supabase-Edge-Funktion vorbereiten
+                        response = requests.post(
+                            "https://tyggaqynkmujggfszrvc.supabase.co/functions/v1/start-translation",
+                            json={
+                                "email": email,
+                                "fileData": file_data,
+                                "fileName": uploaded_file.name,
+                                "original_filename": uploaded_file.name,
+                                "source_language": source_language,
+                                "target_language": target_language,
+                                "country": country,
+                                "respondent_group": respondent_group,
+                                "survey_topic": survey_topic,
+                                "survey_content": survey_content,
+                                "api_key": api_key,
+                                "model": selected_model,
+                                "batch_size": batch_size,
+                                "system_message": custom_system_message
+                            },
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5Z2dhcXlua211amdnZnN6cnZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5OTA4MzAsImV4cCI6MjA1ODU2NjgzMH0.VACjxNLN_0AnN37xfrYcb-8b-5bOQgBfgLdl29I-HoE"
+                            }
+                        )
+                        
+                        # Detailliertere Fehlerbehandlung
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            st.success(f"""
+                            Übersetzungsjob erfolgreich gestartet!
+                            
+                            Deine Übersetzung wird im Hintergrund verarbeitet. Sobald sie fertig ist, erhältst du eine E-Mail an {email} mit einem Link zum Herunterladen der übersetzten Datei. Falls du keine E-Mail erhalten hast, bitte überprüfe deinen Spam-Ordner. 
+                            
+                            Den Fortschritt deines Jobs kannst du jederzeit in der "Alle Jobs" App auf der Startseite verfolgen.
+
+                            Job-ID: {response_data.get('jobId')}
+                            """)
                         else:
-                            # Eingaben validieren
-                            if not country:
-                                st.error("Bitte gib das Land ein, in dem die Befragung durchgeführt wird.")
-                                return
-                            if not respondent_group:
-                                st.error("Bitte gib die Befragtengruppe ein.")
-                                return
-                            if not survey_topic:
-                                st.error("Bitte gib das Thema der Befragung ein.")
-                                return
-                            if not survey_content:
-                                st.error("Bitte beschreibe das Ziel und das Thema des Fragebogens.")
-                                return
+                            # Versuche, detailliertere Fehlerinformationen zu extrahieren
+                            try:
+                                error_data = response.json()
+                                error_message = error_data.get('error', 'Kein spezifischer Fehler zurückgegeben')
+                                st.error(f"Fehler beim Starten des Übersetzungsjobs (Status: {response.status_code}): {error_message}")
+                                st.error(f"Vollständige Antwort: {error_data}")
+                            except Exception as json_error:
+                                st.error(f"Fehler beim Starten des Übersetzungsjobs (Status: {response.status_code})")
+                                st.error(f"Antworttext: {response.text}")
+                            
+                except Exception as e:
+                    st.error(f"Ein Fehler ist aufgetreten: {str(e)}")
+                    # Zeige den vollständigen Fehler in einem Expander für Entwickler
+                    with st.expander("Fehlerdetails (für Entwickler)"):
+                        st.exception(e)
+                        st.write("Exception Typ:", type(e).__name__)
 
-                            # Konvertiere DataFrame in Base64-String
-                            excel_buffer = BytesIO()
-                            df.to_excel(excel_buffer, index=False, engine="openpyxl")
-                            excel_buffer.seek(0)
-                            file_data = base64.b64encode(excel_buffer.read()).decode("utf-8")
-
-                            # Schritt 1: Datei zu Supabase hochladen und Job starten
-                            with st.spinner("Übersetzungsjob wird gestartet..."):
-                                try:
-                                    # Format des Dateinamens extrahieren
-                                    original_filename = uploaded_file.name
-
-                                    # Daten für die Supabase Edge Function vorbereiten
-                                    supabase_url = "https://tyggaqynkmujggfszrvc.supabase.co/functions/v1/start-translation"
-                                    
-                                    # Die Anfrage an die Supabase-Funktion senden
-                                    response = requests.post(
-                                        supabase_url,
-                                        headers={"Content-Type": "application/json"},
-                                        json={
-                                            "source_language": source_language,
-                                            "target_language": target_language,
-                                            "fileData": file_data,  # Base64-String der Excel-Datei
-                                            "email": email,
-                                            "api_key": api_key,
-                                            "model": selected_model,
-                                            "batch_size": batch_size,
-                                            "country": country,
-                                            "respondent_group": respondent_group,
-                                            "survey_topic": survey_topic,
-                                            "survey_content": survey_content,
-                                            "system_message": system_message,
-                                            "original_filename": original_filename
-                                        }
-                                    )
-                                    
-                                    if response.status_code == 200:
-                                        result = response.json()
-                                        job_id = result.get("jobId")
-                                        st.success(f"Übersetzungsjob erfolgreich gestartet! Du erhältst eine E-Mail, sobald die Übersetzung abgeschlossen ist.")
-                                        st.info(f"Job-ID: {job_id}")
-                                        st.write("Du kannst den Status deines Jobs in der 'Alle Jobs' App überprüfen.")
-                                    else:
-                                        st.error(f"Fehler beim Starten des Übersetzungsjobs: {response.text}")
-                                except Exception as e:
-                                    st.error(f"Ein Fehler ist aufgetreten: {str(e)}")
-                                    
-            except Exception as e:
-                st.error(f"Fehler beim Lesen der Excel-Datei: {e}")
-
-        # Zeige einen Link zur Jobs-App
-        st.markdown("---")
-        st.write("Du möchtest den Fortschritt deiner Übersetzungen verfolgen? Schau dir die [Alle Jobs App](#) an.")
-        if st.button("Zur Jobs-App"):
-            select_app("jobs")
-            st.rerun()
-
-    # Textbereinigung für die Übersetzung
-    def clean_text(text):
-        if pd.isna(text):
-            return ''
-        return str(text).strip()
-
-    # Entscheidungsfindung, ob Tutorial oder Hauptapp gezeigt werden sollte
-    if not st.session_state.tutorial_done:
-        show_tutorial()
-    else:
+    # Zeige Hauptanwendung oder Tutorial
+    if st.session_state.tutorial_done:
         main_app()
+    else:
+        show_tutorial()
+
+

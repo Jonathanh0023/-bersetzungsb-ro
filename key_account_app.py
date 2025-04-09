@@ -215,7 +215,7 @@ def key_account_app():
                 # Den "Übersetzung abbrechen" Button nur anzeigen, wenn die Übersetzung läuft
                 if st.session_state.translation_running:
                     with col2:
-                        st.button("🚫 Übersetzung abbrechen", on_click=stop_translation)
+                        st.button("🛑 Übersetzung abbrechen", on_click=stop_translation)
 
             if st.session_state.translation_running:
                 # Übersetzung durchführen
@@ -246,4 +246,50 @@ def key_account_app():
                                 )
                                 df.at[
                                     index, "Text zur Übersetzung / Versionsanpassung"
-                                ] = clean_line.strip()}
+                                ] = clean_line.strip()
+
+                                # Aktualisierung des DataFrames
+                                st.session_state.df = df
+                                dataframe_placeholder.dataframe(df)
+
+                        # Fortschritt aktualisieren
+                        progress_bar.progress((index + 1) / total_rows)
+
+                    if st.session_state.translation_running:
+                        message_placeholder.success("Übersetzung abgeschlossen.")
+                    st.session_state.translation_running = False
+                except Exception as e:
+                    message_placeholder.error(f"Ein Fehler ist aufgetreten: {e}")
+                    st.session_state.translation_running = False
+                finally:
+                    progress_bar.empty()
+                    st.session_state.translation_stopped = True
+                    # Button-Placeholder leeren
+                    button_placeholder.empty()
+
+            # Excel-Datei für den Download vorbereiten
+            if st.session_state.translation_stopped:
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                    st.session_state.df.to_excel(writer, index=False)
+                output.seek(0)
+
+                st.download_button(
+                    label="💾 Übersetzung herunterladen",
+                    data=output,
+                    file_name="translated_output.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+                st.session_state.translation_stopped = False  # Zurücksetzen
+
+        else:
+            st.info("Bitte lade eine Excel-Datei hoch, um fortzufahren.")
+            # Entferne DataFrame aus Session-State, wenn keine Datei hochgeladen ist
+            if "df" in st.session_state:
+                del st.session_state.df
+
+    # Steuerung, welche Seite angezeigt wird
+    if st.session_state.api_key:
+        main_app_key()  # Zeigt die Hauptanwendung an
+    else:
+        api_key_input()  # Zeigt die Eingabeaufforderung für den API-Schlüssel an

@@ -33,6 +33,15 @@ CREATE TABLE IF NOT EXISTS public.translation_jobs (
   file_url TEXT,
   source_language TEXT,
   target_language TEXT,
+  country TEXT,
+  respondent_group TEXT,
+  survey_topic TEXT,
+  survey_content TEXT,
+  api_key TEXT,
+  model TEXT,
+  batch_size INTEGER,
+  system_message TEXT,
+  original_filename TEXT,
   error_message TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -54,6 +63,23 @@ Die Felder umfassen:
 - Trigger.dev-Konto
 - OpenAI API-Schlüssel
 - Resend-Konto für E-Mail-Versand
+
+### GitHub-Workflow
+
+Das Projekt kann direkt aus GitHub in die Produktionsumgebung deployed werden:
+
+1. Der Code wird auf GitHub gepusht
+2. Trigger.dev synchronisiert automatisch mit dem GitHub-Repository 
+3. Supabase Edge Functions werden manuell über die Supabase CLI deployt
+
+```bash
+# Zum Pushen an GitHub
+git add .
+git commit -m "Deine Commit-Nachricht"
+git push origin main
+```
+
+Keine lokale Entwicklungsumgebung für Trigger.dev ist erforderlich - alles läuft in der Cloud.
 
 ### Einrichtung in Supabase
 
@@ -77,45 +103,36 @@ supabase functions deploy send-email
 4. Setze folgende Umgebungsvariablen in Supabase:
 
 - `SUPABASE_SERVICE_ROLE_KEY`: Service-Rolle-Schlüssel von Supabase
-- `TRIGGER_DEV_API_KEY`: API-Schlüssel von Trigger.dev
+- `TRIGGER_DEV_API_KEY`: API-Schlüssel von Trigger.dev (für Entwicklungsumgebung)
+- `TRIGGER_PROD_API_KEY`: API-Schlüssel von Trigger.dev (für Produktionsumgebung)
 - `TRIGGER_PROJECT_ID`: Projekt-ID in Trigger.dev (proj_hobmfqqsjwwoistsziye)
 - `RESEND_API_KEY`: API-Schlüssel für Resend-E-Mail-Service
 
 ### Einrichtung bei Trigger.dev
 
 1. Registriere dich bei [Trigger.dev](https://trigger.dev) und erstelle ein neues Projekt
-2. Initialisiere das Projekt:
+2. Verbinde dein GitHub-Repository mit Trigger.dev (unter "Einstellungen" > "GitHub")
+3. Aktiviere den Job "translation-job" im Dashboard
+4. Konfiguriere die Umgebungsvariablen in Trigger.dev:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `RESEND_API_KEY`
+
+Wichtig: Nach dem GitHub-Push wird dein Code automatisch bei Trigger.dev aktualisiert. Du musst keine lokale Entwicklungsumgebung starten.
+
+### Lokale Entwicklung (optional)
+
+Für lokale Tests:
 
 ```bash
+# Initialisiere Trigger.dev
 npx trigger.dev@latest init
-```
 
-3. Installiere Abhängigkeiten:
-
-```bash
+# Installiere Abhängigkeiten
 npm install @supabase/supabase-js openai xlsx
-```
 
-4. Konfiguriere die maximale Laufzeit auf 3 Stunden in `trigger.config.ts`:
-
-```typescript
-export default defineConfig({
-  project: "proj_hobmfqqsjwwoistsziye",
-  maxDuration: 5 * 60 * 60, // 3 Stunden in Sekunden
-  dirs: ["./src/trigger"],
-});
-```
-
-5. Führe den Entwicklungsserver aus:
-
-```bash
+# Starte lokalen Entwicklungsserver
 npx trigger.dev@latest dev
-```
-
-6. Deploye den Job:
-
-```bash
-npx trigger.dev@latest deploy
 ```
 
 ## Verwendung
@@ -151,4 +168,4 @@ Wenn Probleme auftreten, überprüfe:
 - Excel-Dateien werden Base64-kodiert zwischen den Diensten übertragen
 - Übersetzungsergebnisse werden in der Spalte "Text zur Übersetzung / Versionsanpassung" gespeichert
 - Die Qualitätssicherung (QM-Check) markiert potenzielle Probleme in der Übersetzung
-- Die Benutzeroberfläche ist komplett auf Deutsch und unterstützt die automatische Aktualisierung
+- Die Benutzeroberfläche ist komplett auf Deutsch und unterstützt die automatische Aktualisierung 
