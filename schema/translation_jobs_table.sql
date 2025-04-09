@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS public.translation_jobs (
   source_language TEXT,
   target_language TEXT,
   error_message TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() AT TIME ZONE 'Europe/Berlin'),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() AT TIME ZONE 'Europe/Berlin'),
   completed_at TIMESTAMP WITH TIME ZONE
 );
 
