@@ -249,247 +249,236 @@ def main():
                 )
             
             with col2:
-                language_input = st.text_input(
-                    f"Oder manuelle Eingabe des Sprachcodes (Transkript {transcript_idx + 1})",
-                    "",
-                    key=f"lang_input_{transcript_idx}"
+                custom_language = st.text_input(
+                    "Sprache nicht vorhanden? Hier den Ländercode eingeben:",
+                    placeholder="z.B. ja für Japanisch",
+                    key=f"custom_lang_{transcript_idx}"
                 )
             
-            # Bestimme die zu verwendende Sprache
-            language = language_input if language_input else language_dropdown
-            
-            # Anzahl der Sprecher
+            language = custom_language if custom_language else language_dropdown
+
+            translate = st.checkbox("Transkript auf Englisch übersetzen", 
+                                 value=False, 
+                                 key=f"translate_{transcript_idx}")
+
             num_speakers = st.number_input(
-                f"Anzahl der Sprecher (Transkript {transcript_idx + 1}):", 
+                "Anzahl Sprecher:", 
                 min_value=1, 
-                max_value=10, 
                 value=2,
                 key=f"num_speakers_{transcript_idx}"
             )
             
-            # Prompt für zusätzlichen Kontext
-            prompt = st.text_area(
-                f"Zusätzlicher Kontext (optional) (Transkript {transcript_idx + 1}):", 
-                "", 
+            # Collect speaker names
+            speaker_names = {}
+            for i in range(1, num_speakers + 1):
+                speaker_name = st.text_input(
+                    f"Name Sprecher {i} (optional):",
+                    key=f"speaker_{transcript_idx}_{i}"
+                )
+                if speaker_name:
+                    speaker_names[f"SPEAKER_{i-1:02}"] = speaker_name
+
+            prompt = st.text_input(
+                "Info für die KI (optional):",
                 key=f"prompt_{transcript_idx}"
             )
-            
-            # Sprechernamen zuweisen
-            with st.expander(f"Sprechernamen zuweisen (Transkript {transcript_idx + 1})", expanded=False):
-                speaker_names = {}
-                for speaker_idx in range(num_speakers):
-                    speaker_label = f"SPEAKER_{speaker_idx:02d}"
-                    speaker_name = st.text_input(
-                        f"Name für {speaker_label}", 
-                        "", 
-                        key=f"speaker_name_{transcript_idx}_{speaker_idx}"
-                    )
-                    if speaker_name:
-                        speaker_names[speaker_label] = speaker_name
-            
-            # Übersetzungsoption
-            translate_to_english = st.checkbox(
-                f"Ins Englische übersetzen (Transkript {transcript_idx + 1})", 
-                False,
-                key=f"translate_{transcript_idx}"
-            )
-            
-            # Datei hochladen
+
             uploaded_file = st.file_uploader(
-                f"Audio- oder Videodatei hochladen (Transkript {transcript_idx + 1})", 
-                type=["mp3", "mp4", "wav", "m4a", "webm"],
+                "Audio-Datei hochladen (bei mehr als 100 MB wird die Datei automatisch in mehrere Teile aufgeteilt und die Transkription mit den einzelnen Teilen erneut durchgeführt):", 
+                type=["wav", "mp3", "mp4"],
                 key=f"file_uploader_{transcript_idx}"
             )
             
-            # Alternativ URL eingeben
-            direct_url = st.text_input(
-                f"Oder direkte URL zur Datei (Transkript {transcript_idx + 1})", 
-                "",
+            direct_url_input = st.empty()
+            direct_url = direct_url_input.text_input(
+                "Oder verwende einen Downloadlink zur Datei:",
                 key=f"direct_url_{transcript_idx}"
             )
             
-            # Basisname für die Ausgabedatei
-            base_name = st.text_input(
-                f"Ausgabedateiname (ohne Erweiterung) (Transkript {transcript_idx + 1})", 
-                f"Transkript_{transcript_idx + 1}",
-                key=f"base_name_{transcript_idx}"
-            )
-            
-            # E-Mail-Adresse für Benachrichtigung
-            email = st.text_input(
-                f"E-Mail-Adresse für Benachrichtigung (Transkript {transcript_idx + 1})", 
-                "",
-                key=f"email_{transcript_idx}"
-            )
-            emails = [email] if email else []
-    
-    # Button zum Starten des Prozesses
-    if st.button("Transkription starten"):
-        successful = True
-        # Verarbeite jedes Transkript
-        for transcript_idx in range(num_transcripts):
-            # Extrahiere die Parameter für das aktuelle Transkript
-            language_dropdown = st.session_state.get(f"lang_dropdown_{transcript_idx}")
-            language_input = st.session_state.get(f"lang_input_{transcript_idx}")
-            language = language_input if language_input else language_dropdown
-            
-            num_speakers = st.session_state.get(f"num_speakers_{transcript_idx}")
-            prompt = st.session_state.get(f"prompt_{transcript_idx}")
-            translate = st.session_state.get(f"translate_{transcript_idx}")
-            uploaded_file = st.session_state.get(f"file_uploader_{transcript_idx}")
-            direct_url = st.session_state.get(f"direct_url_{transcript_idx}")
-            base_name = st.session_state.get(f"base_name_{transcript_idx}")
-            email = st.session_state.get(f"email_{transcript_idx}")
-            emails = [email] if email else []
-            
-            # Extrahiere Sprechernamen
-            speaker_names = {}
-            for speaker_idx in range(num_speakers):
-                speaker_label = f"SPEAKER_{speaker_idx:02d}"
-                speaker_name = st.session_state.get(f"speaker_name_{transcript_idx}_{speaker_idx}")
-                if speaker_name:
-                    speaker_names[speaker_label] = speaker_name
-            
-            # Verarbeite das Transkript
-            if (uploaded_file or direct_url) and language:
-                try:
-                    # Verarbeite das Transkript
-                    result = handle_audio_process(
-                        num_speakers=num_speakers,
-                        language=language,
-                        prompt=prompt,
-                        user_email=emails,
-                        uploaded_file=uploaded_file,
-                        direct_url=direct_url,
-                        base_name=base_name,
-                        speaker_names=speaker_names,
-                        translate=translate
-                    )
+            base_name = None
+            if uploaded_file:
+                file_size = uploaded_file.size
+                if file_size > 100 * 1024 * 1024:
+                    parts = split_file(uploaded_file)
+                    st.warning("""
+                        Die hochgeladene Datei ist größer als 100 MB. Da der Hosting-Service eine Größenbeschränkung von 100 MB hat, 
+                        wurde die Datei automatisch in mehrere Teile aufgeteilt. 
+                        
+                        Bitte lade alle Teile herunter und führe die Transkription mit den einzelnen Teilen erneut durch.
+                        """)
                     
-                    if result:
-                        st.success(f"✅ Transkription {transcript_idx + 1} erfolgreich! {result}")
-                    else:
-                        st.error(f"❌ Fehler bei der Verarbeitung von Transkript {transcript_idx + 1}!")
-                        successful = False
-                except Exception as e:
-                    st.error(f"❌ Fehler bei der Verarbeitung von Transkript {transcript_idx + 1}: {str(e)}")
-                    successful = False
-            else:
-                st.error(f"❌ Bitte lade eine Datei hoch oder gib eine URL ein und wähle eine Sprache für Transkript {transcript_idx + 1}!")
-                successful = False
+                    for idx, part in enumerate(parts):
+                        st.download_button(
+                            label=f"Download Teil {idx + 1}",
+                            data=part,
+                            file_name=f"{os.path.splitext(uploaded_file.name)[0]}_teil{idx + 1}{os.path.splitext(uploaded_file.name)[1]}",
+                            mime=uploaded_file.type,
+                            key=f"download_part_{transcript_idx}_{idx}"
+                        )
+                else:
+                    file_url = upload_to_hosting_service(uploaded_file)
+                    base_name = os.path.splitext(uploaded_file.name)[0]
+                    direct_url_input.text_input(
+                        "Oder verwende eine URL zur Datei:", 
+                        value=file_url,
+                        key=f"direct_url_input_{transcript_idx}"
+                    )
+                    direct_url = file_url
+
+            # Speichere die Konfiguration für dieses Transkript
+            if 'transcript_configs' not in st.session_state:
+                st.session_state.transcript_configs = {}
+            
+            st.session_state.transcript_configs[transcript_idx] = {
+                'language': language,
+                'num_speakers': num_speakers,
+                'prompt': prompt,
+                'direct_url': direct_url,
+                'base_name': base_name,
+                'speaker_names': speaker_names,
+                'translate': translate
+            }
+
+    # E-Mail-Eingabe außerhalb der Transkript-Schleifen
+    user_email = st.text_input(
+        "Bitte gib deine E-Mail-Adresse ein, falls du die Downloadlinks zugeschickt haben möchtest, sobald die Transkripte fertig sind. Es können mehrere E-Mail-Adressen eingeben werden. Diese müssen durch Komma getrennt werden (optional):"
+    )
+
+    # Gemeinsamer "Transkribieren" Button für alle Transkripte
+    if st.button("Alle Transkripte erstellen", key="button_transcribe_all"):
+        missing_language = False
+        for idx in range(num_transcripts):
+            config = st.session_state.transcript_configs.get(idx, {})
+            if not config.get('language'):
+                missing_language = True
+                st.error(f"Bitte wähle eine Sprache für Transkript {idx + 1} aus.")
         
-        # Gesamtergebnis anzeigen
-        if successful:
-            st.balloons()
-            st.success("✅ Alle Transkripte wurden erfolgreich verarbeitet!")
-            st.info("ℹ️ Wenn du eine E-Mail-Adresse angegeben hast, erhältst du eine Benachrichtigung, sobald die Transkription vollständig ist.")
-        else:
-            st.warning("⚠️ Es sind Fehler bei der Verarbeitung aufgetreten. Bitte überprüfe die Fehlermeldungen oben.")
+        if not missing_language:
+            with st.spinner("Transkribiere alle Dateien..."):
+                results = []
+                for idx in range(num_transcripts):
+                    config = st.session_state.transcript_configs[idx]
+                    try:
+                        output_path, transcript_download_link = process_audio(
+                            direct_url=config['direct_url'],
+                            num_speakers=config['num_speakers'],
+                            language=config['language'],
+                            prompt=config['prompt'],
+                            base_name=f"{config['base_name']}_{idx+1}" if config['base_name'] else f"Transkript_{idx+1}",
+                            speaker_names=config['speaker_names'],
+                            translate=config['translate']
+                        )
+                        results.append((output_path, transcript_download_link))
+                    except Exception as e:
+                        st.error(f"Fehler bei Transkript {idx + 1}: {str(e)}")
+                        continue
+            # Speichere die Ergebnisse in st.session_state, statt sie sofort anzuzeigen
+            if results:
+                st.session_state["transcription_results"] = results
+                # Sende E-Mail-Benachrichtigung nur einmal
+                if user_email and "email_sent" not in st.session_state:
+                    email_list = [email.strip() for email in user_email.split(',')]
+                    for idx, (output_path, download_link) in enumerate(results):
+                        if output_path:
+                            send_email_notification(
+                                email_list,
+                                os.path.basename(output_path),
+                                download_link
+                            )
+                    st.session_state["email_sent"] = True
+
+    # Am Ende von main(): Download-Buttons anzeigen, basierend auf den gespeicherten Ergebnissen
+    if "transcription_results" in st.session_state:
+        results = st.session_state["transcription_results"]
+        st.success("Fertig!")
+        for idx, (output_path, download_link) in enumerate(results):
+            if output_path:
+                # Lese die Datei und konvertiere zu base64
+                with open(output_path, "rb") as f:
+                    doc_bytes = f.read()
+                    doc_b64 = base64.b64encode(doc_bytes).decode()
+                
+                # Erstelle einen HTML Download-Link
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{doc_b64}" download="{os.path.basename(output_path)}">Download Transkript {idx + 1}</a>'
+                st.markdown(href, unsafe_allow_html=True)
 
 def enter_replicate_api_token():
-    """
-    Erlaubt dem Benutzer, seinen Replicate API-Token einzugeben und speichert ihn im Session State.
-    Gibt True zurück, wenn ein Token im Session State existiert, sonst False.
-    """
-    if 'replicate_token' not in st.session_state:
-        st.session_state.replicate_token = ""
+    """Interactive field to enter the Replicate API token."""
+    # Hole den Token aus der Session, falls vorhanden
+    if 'replicate_token' in st.session_state:
+        replicate_token = st.session_state.replicate_token
+    else:
+        replicate_token = st.text_input("Bitte hier den geheimen Replicate Token eingeben:", type="password")
         
-    # Token-Eingabe
-    token = st.text_input(
-        "Replicate API Token",
-        value=st.session_state.replicate_token,
-        type="password",
-        help="Du benötigst einen Replicate API Token. Erhalte ihn unter https://replicate.com/account/api-tokens"
-    )
-    
-    # Token speichern
-    if token:
-        st.session_state.replicate_token = token
-        return True
+    if replicate_token:
+        os.environ["REPLICATE_API_TOKEN"] = replicate_token
+        # Validiere den Token
+        try:
+            # Versuche eine einfache API-Anfrage
+            replicate.Client(api_token=replicate_token).models.get("stability-ai/stable-diffusion")
+            st.success("✅ API Token erfolgreich validiert!")
+            # Speichere den Token in der Session
+            st.session_state.replicate_token = replicate_token
+            return True
+        except Exception as e:
+            st.error("""
+            ❌ Der eingegebene API Token ist ungültig. 
+            
+            Bitte überprüfe, ob du den Token korrekt von replicate.com kopiert hast.
+            """)
+            # Lösche ungültigen Token aus der Session
+            if 'replicate_token' in st.session_state:
+                del st.session_state.replicate_token
+            return False
     return False
 
 def handle_audio_process(num_speakers, language, prompt, user_email, uploaded_file=None, direct_url=None, base_name=None, speaker_names=None, translate=False):
-    """
-    Verarbeitet eine Audiodatei und gibt eine Erfolgsmeldung oder eine Fehlermeldung zurück.
-    """
     try:
-        with st.spinner(f"Transkription läuft... (Sprache: {language}, Sprecher: {num_speakers})"):
-            # Dateigröße prüfen und ggf. aufteilen
-            if uploaded_file:
-                file_size = uploaded_file.size
-                # Wenn die Datei größer als 95 MB ist, aufteilen
-                if file_size > 95 * 1024 * 1024:  # 95 MB in Bytes
-                    st.warning(f"Die Datei ist {file_size / (1024 * 1024):.2f} MB groß und wird aufgeteilt.")
-                    file_chunks = split_file(uploaded_file)
-                    st.info(f"Datei in {len(file_chunks)} Teile aufgeteilt.")
-                    
-                    # Jedes Stück verarbeiten
-                    for i, chunk in enumerate(file_chunks):
-                        output_path, download_link = process_audio(
-                            uploaded_file=chunk,
-                            num_speakers=num_speakers,
-                            language=language,
-                            prompt=prompt,
-                            base_name=f"{base_name}_Teil_{i+1}" if base_name else f"Transkript_Teil_{i+1}",
-                            speaker_names=speaker_names,
-                            translate=translate
-                        )
-                        
-                        # E-Mail-Benachrichtigung senden, falls gewünscht
-                        if user_email:
-                            send_email_notification(user_email, f"{base_name}_Teil_{i+1}" if base_name else f"Transkript_Teil_{i+1}", download_link)
-                        
-                        st.success(f"Teil {i+1}/{len(file_chunks)} verarbeitet. [Download]({download_link})")
-                        
-                    return "Alle Teile wurden verarbeitet. Siehe Links oben zum Herunterladen."
+        output_path, transcript_download_link = process_audio(
+            uploaded_file=uploaded_file, 
+            direct_url=direct_url, 
+            num_speakers=num_speakers, 
+            language=language, 
+            prompt=prompt, 
+            base_name=base_name, 
+            speaker_names=speaker_names,
+            translate=translate
+        )  
+        if output_path is not None:
+            st.success(f"Fertig!")
+            # Lese die Datei und konvertiere zu base64
+            with open(output_path, "rb") as f:
+                doc_bytes = f.read()
+                doc_b64 = base64.b64encode(doc_bytes).decode()
             
-            # Standard-Verarbeitung für Dateien unter 95 MB oder direkte URLs
-            output_path, download_link = process_audio(
-                uploaded_file=uploaded_file,
-                direct_url=direct_url,
-                num_speakers=num_speakers,
-                language=language,
-                prompt=prompt,
-                base_name=base_name,
-                speaker_names=speaker_names,
-                translate=translate
-            )
-            
-            # E-Mail-Benachrichtigung senden, falls gewünscht
+            # Erstelle einen HTML Download-Link
+            href = f'<a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{doc_b64}" download="{os.path.basename(output_path)}">Download Transkript</a>'
+            st.markdown(href, unsafe_allow_html=True)
             if user_email:
-                send_email_notification(user_email, base_name or "Transkript", download_link)
-                
-            # Download-Button anzeigen
-            return f"[Transkript herunterladen]({download_link})"
+                email_list = user_email.split(',')
+                send_email_notification(email_list, os.path.basename(output_path), transcript_download_link)
+
     except Exception as e:
-        st.error(f"Fehler während der Verarbeitung: {str(e)}")
-        import traceback
-        st.error(traceback.format_exc())
-        return None
+        error_message = str(e)
+        if "Unauthenticated" in error_message or "authentication token" in error_message:
+            st.error("""
+            ⚠️ Authentifizierungsfehler
+            
+            Bitte stelle sicher, dass du einen gültigen Replicate API Token eingegeben hast.""")
+        else:
+            st.error(f"Bei der Verarbeitung der Audio-Datei ist ein Fehler aufgetreten:\n{error_message}")
 
 def split_file(file, max_size=95 * 1024 * 1024):
-    """
-    Teilt eine Datei in Stücke von max_size auf und gibt die Stücke als BytesIO-Objekte zurück.
-    """
-    # Datei komplett in den Speicher lesen
-    file_content = file.read()
-    file_size = len(file_content)
-    
-    # Anzahl der benötigten Stücke berechnen
-    num_chunks = math.ceil(file_size / max_size)
-    chunks = []
-    
-    for i in range(num_chunks):
+    """Teilt eine Datei in Teile, die jeweils weniger als max_size Bytes groß sind."""
+    total_size = len(file.getvalue())
+    num_parts = math.ceil(total_size / max_size)
+    parts = []
+    for i in range(num_parts):
         start = i * max_size
-        end = min((i + 1) * max_size, file_size)
-        chunk_content = file_content[start:end]
-        
-        # BytesIO-Objekt erstellen
-        chunk = io.BytesIO(chunk_content)
-        chunk.name = f"{file.name}.part{i+1}"  # Name für das Stück setzen
-        chunks.append(chunk)
-    
-    return chunks
+        end = start + max_size
+        part = file.getvalue()[start:end]
+        parts.append(part)
+    return parts
 
 if __name__ == "__main__":
     main()
