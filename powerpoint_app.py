@@ -566,7 +566,6 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
     
     # Footer
     st.markdown("---")
-    st.markdown("Erstellt mit ❤️ unter Verwendung von Streamlit und OpenAI GPT-Modellen")
 
 # Call the function when the script is run directly
 if __name__ == "__main__":
