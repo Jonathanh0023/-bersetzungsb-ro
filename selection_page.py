@@ -132,7 +132,7 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "**PowerPoint Übersetzer**\n\n(Überprüft und korrigiert die Sprache in PowerPoint-Präsentationen)",
+            "**PowerPoint Übersetzer**\n\n(PowerPoint Präsentationen können hier übersetzt oder korrigiert werden)",
             on_click=lambda: select_app("powerpoint"),
             key="powerpoint_button",
         )
