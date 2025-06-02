@@ -1,540 +1,573 @@
 import streamlit as st
-import pandas as pd
-from pptx import Presentation
-from openai import OpenAI
+import openai
 import os
-from pathlib import Path
-import difflib
-from html import escape
-from docx import Document
-from io import BytesIO
-import re
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+import pptx
+from pptx import Presentation
+from pptx.util import Inches
+import json
+from typing import List, Dict
+import hashlib
+from datetime import datetime
+from openai import AsyncOpenAI
+import asyncio
+import tempfile
+import io
 
 def powerpoint_app():
     # Titel der App
     st.title("BonsAI PowerPoint Sprachprüfung und Korrektur")
 
-    # Sidebar erstellen
-    with st.sidebar:
-        st.header("Einstellungen")
+    # --- Constants and Configurations ---
+
+    SUPPORTED_EXTENSIONS = ('.pptx',)
+
+    # Model options for the dropdown
+    MODEL_OPTIONS = {
+        "GPT-4.1-mini": "gpt-4.1-mini",
+        "GPT-4o": "gpt-4o"
+    }
+
+    # Language options for the dropdown
+    LANGUAGE_OPTIONS = {
+        "Deutsch": "de",
+        "Spanisch": "es",
+        "Französisch": "fr", 
+        "Englisch": "en",
+        "Italienisch": "it",
+        "Portugiesisch": "pt",
+        "Chinesisch (Vereinfacht)": "zh-CN",
+        "Chinesisch (Traditionell)": "zh-TW",
+        "Japanisch": "ja",
+        "Koreanisch": "ko",
+        "Russisch": "ru",
+        "Arabisch": "ar",
+        "Hindi": "hi",
+        "Niederländisch": "nl",
+        "Schwedisch": "sv",
+        "Norwegisch": "no",
+        "Dänisch": "da",
+        "Finnisch": "fi",
+        "Polnisch": "pl",
+        "Tschechisch": "cs",
+        "Ungarisch": "hu",
+        "Rumänisch": "ro",
+        "Bulgarisch": "bg",
+        "Kroatisch": "hr",
+        "Serbisch": "sr",
+        "Slowakisch": "sk",
+        "Slowenisch": "sl",
+        "Estnisch": "et",
+        "Lettisch": "lv",
+        "Litauisch": "lt",
+        "Griechisch": "el",
+        "Türkisch": "tr",
+        "Hebräisch": "he",
+        "Thai": "th",
+        "Vietnamesisch": "vi",
+        "Indonesisch": "id",
+        "Malaiisch": "ms",
+        "Filipino": "fil",
+        "Ukrainisch": "uk"
+    }
+
+    # Default system prompt
+    DEFAULT_SYSTEM_PROMPT = """Du bist ein hilfreicher Assistent, der Texte in {target_language} übersetzt.
+Behalte die ursprüngliche Bedeutung so genau wie möglich bei.
+Passe den Ton der Übersetzung so an, dass er für professionelle Präsentationen in der Zielsprache ({target_language}) angemessen ist.
+Der übersetzte Text sollte ungefähr die gleiche Zeichenlänge wie der ursprüngliche Text haben (innerhalb einer 5%-Marge).
+Übersetze keine E-Mails, Telefonnummern oder andere nicht-textuelle Inhalte.
+Verwende korrekte Umlaute und Sonderzeichen für die Zielsprache.
+Gib die Übersetzung als JSON-Objekt genau wie folgt zurück: {{"translated": "<übersetzter Text>"}}"""
+
+    # --- Helper Functions ---
+
+    def generate_prompt_hash(prompt: str) -> str:
+        """Generates a SHA-256 hash of the prompt for use as a cache key."""
+        return hashlib.sha256(prompt.encode('utf-8')).hexdigest()
+
+    def safe_text_extraction(text: str) -> str:
+        """Safely extracts and normalizes text to handle encoding issues."""
+        if not text:
+            return ""
         
-        # API Key Eingabe
+        # Ensure proper UTF-8 encoding
+        try:
+            # If text is bytes, decode it
+            if isinstance(text, bytes):
+                text = text.decode('utf-8', errors='replace')
+            
+            # Normalize the text to handle any encoding issues
+            text = text.encode('utf-8', errors='replace').decode('utf-8')
+            
+            # Clean up any problematic characters while preserving umlauts
+            text = text.strip()
+            
+            return text
+        except Exception as e:
+            st.warning(f"Textverarbeitungsfehler: {e}")
+            return str(text) if text else ""
+
+    async def translate_text_with_openai(prompt: str, target_language: str, cache: Dict, model: str = "gpt-4.1-mini", system_prompt: str = None, max_retries: int = 3) -> str:
+        """Translates text using the OpenAI API, with caching and retries."""
+        # Ensure proper text encoding
+        prompt = safe_text_extraction(prompt)
+        
+        # Include system prompt in hash for separate caching
+        cache_key = prompt + model + (system_prompt or DEFAULT_SYSTEM_PROMPT)
+        prompt_hash = generate_prompt_hash(cache_key)
+        if prompt_hash in cache:
+            return cache[prompt_hash]
+
+        # Use custom system prompt or default
+        if system_prompt is None:
+            system_instruction = DEFAULT_SYSTEM_PROMPT.format(target_language=target_language)
+        else:
+            system_instruction = system_prompt.format(target_language=target_language)
+
+        api_key = st.session_state.get("api_key")
+        if not api_key:
+            raise ValueError("OpenAI API-Schlüssel nicht gefunden. Bitte gib deinen API-Schlüssel ein.")
+
+        client = AsyncOpenAI(api_key=api_key, timeout=30.0)
+
+        for attempt in range(max_retries):
+            try:
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=4096,
+                    timeout=30,
+                    response_format={"type": "json_object"}
+                )
+                result = response.choices[0].message.content.strip()
+
+                for parse_attempt in range(max_retries):
+                    try:
+                        parsed = json.loads(result)
+                        translated_text = parsed["translated"]
+                        # Ensure proper encoding of the translated text
+                        translated_text = safe_text_extraction(translated_text)
+                        cache[prompt_hash] = translated_text
+                        return translated_text
+                    except (json.JSONDecodeError, KeyError) as e:
+                        if parse_attempt == max_retries - 1:
+                            return prompt
+                    except Exception as e:
+                        return prompt
+
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    return prompt
+        return prompt
+
+    def extract_text_from_presentation(presentation_path: str) -> List[Dict]:
+        """Extracts text and context from a PowerPoint presentation."""
+        try:
+            prs = Presentation(presentation_path)
+            text_data = []
+
+            for slide_number, slide in enumerate(prs.slides, start=1):
+                for shape_index, shape in enumerate(slide.shapes):
+                    shape_id = f"slide{slide_number}_shape{shape_index}"
+                    if shape.has_text_frame:
+                        text_frame = shape.text_frame
+                        for paragraph in text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if run.text.strip():
+                                    # Safely extract and normalize text
+                                    clean_text = safe_text_extraction(run.text)
+                                    if clean_text:
+                                        shape_type = "UNKNOWN"
+                                        if shape == slide.shapes.title:
+                                            shape_type = "TITLE"
+                                        elif shape.has_table:
+                                            shape_type = "TABLE"
+                                        else:
+                                            shape_type = "BODY"
+
+                                        text_data.append({
+                                            "slide_number": slide_number,
+                                            "shape_type": shape_type,
+                                            "text": clean_text,
+                                            "shape_id": shape_id,
+                                        })
+
+                    elif shape.has_table:
+                        for row_idx, row in enumerate(shape.table.rows):
+                            for col_idx, cell in enumerate(row.cells):
+                                if cell.text.strip():
+                                    # Safely extract and normalize text
+                                    clean_text = safe_text_extraction(cell.text)
+                                    if clean_text:
+                                        text_data.append({
+                                            "slide_number": slide_number,
+                                            "shape_type": "TABLE",
+                                            "text": clean_text,
+                                            "shape_id": f"{shape_id}_row{row_idx}_col{col_idx}"
+                                        })
+
+            return text_data
+
+        except Exception as e:
+            st.error(f"Fehler beim Extrahieren von Text aus der Präsentation: {e}")
+            return []
+
+    async def batch_translate_texts_with_openai(text_entries: List[Dict], target_language: str, cache: Dict, model: str = "gpt-4.1-mini", system_prompt: str = None, max_retries: int = 3, batch_size: int = 10) -> None:
+        """Batch translates multiple texts using the OpenAI API with structured JSON output."""
+        texts_to_translate = []
+        cache_key_base = model + (system_prompt or DEFAULT_SYSTEM_PROMPT)
+        
+        for entry in text_entries:
+            # Ensure proper text encoding
+            clean_text = safe_text_extraction(entry["text"])
+            cache_key = clean_text + cache_key_base
+            prompt_hash = generate_prompt_hash(cache_key)
+            if prompt_hash not in cache:
+                texts_to_translate.append((prompt_hash, clean_text))
+
+        if not texts_to_translate:
+            return
+
+        total_batches = (len(texts_to_translate) + batch_size - 1) // batch_size
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        tasks = []
+        for batch_num, i in enumerate(range(0, len(texts_to_translate), batch_size), 1):
+            batch = texts_to_translate[i:i + batch_size]
+            payload = {hash_: text for hash_, text in batch}
+
+            status_text.text(f"Verarbeite Batch {batch_num}/{total_batches} ({len(batch)} Texte)")
+            progress_bar.progress(batch_num / total_batches)
+
+            # Use custom system prompt or default for batch translation
+            if system_prompt is None:
+                system_instruction = f"""Du bist ein hilfreicher Assistent, der mehrere Texte in {target_language} übersetzt.
+Behalte die ursprüngliche Bedeutung so genau wie möglich bei.
+Passe den Ton jeder Übersetzung so an, dass er für professionelle Präsentationen in der Zielsprache ({target_language}) angemessen ist.
+Der übersetzte Text für jede Eingabe sollte ungefähr die gleiche Länge wie der ursprüngliche Text haben (innerhalb einer 10%-Marge).
+Verwende korrekte Umlaute und Sonderzeichen für die Zielsprache.
+Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
+{{"translations": {{"<sha256 hash>": "<übersetzter Text>"}} }}"""
+            else:
+                system_instruction = system_prompt.format(target_language=target_language) + f"""
+Verwende korrekte Umlaute und Sonderzeichen für die Zielsprache.
+Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
+{{"translations": {{"<sha256 hash>": "<übersetzter Text>"}} }}"""
+
+            prompt_data = {
+                "texts": payload,
+                "target_language": target_language,
+                "instructions": "Translate each text, maintaining original meaning and formatting. Use correct umlauts and special characters."
+            }
+
+            api_key = st.session_state.get("api_key")
+            if not api_key:
+                raise ValueError("OpenAI API-Schlüssel nicht gefunden. Bitte gib deinen API-Schlüssel ein.")
+
+            client = AsyncOpenAI(api_key=api_key, timeout=60.0)
+            tasks.append(translate_batch(client, system_instruction, prompt_data, cache, max_retries, batch_num, total_batches, model))
+
+        await asyncio.gather(*tasks)
+        progress_bar.progress(1.0)
+        status_text.text("Übersetzung abgeschlossen!")
+
+    async def translate_batch(client: AsyncOpenAI, system_instruction: str, prompt_data: Dict, cache: Dict, max_retries: int, batch_num: int, total_batches: int, model: str) -> None:
+        """Translates a single batch (async)."""
+        for attempt in range(max_retries):
+            try:
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": json.dumps(prompt_data, ensure_ascii=False)}
+                    ],
+                    temperature=0.2,
+                    max_tokens=4096,
+                    timeout=60,
+                    response_format={"type": "json_object"}
+                )
+                output = response.choices[0].message.content.strip()
+
+                for parse_attempt in range(max_retries):
+                    try:
+                        result = json.loads(output)
+                        translations = result.get("translations", {})
+                        for hash_, translated_text in translations.items():
+                            # Ensure proper encoding of translated text
+                            clean_translated_text = safe_text_extraction(translated_text)
+                            cache[hash_] = clean_translated_text
+                        break
+                    except (json.JSONDecodeError, KeyError) as e:
+                        if parse_attempt == max_retries - 1:
+                            pass
+                    except Exception as e:
+                        pass
+                else:
+                    continue
+                break
+
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    pass
+
+    async def translate_presentation(presentation_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
+        """Translates a PowerPoint presentation and returns the translated version as bytes."""
+        
+        # Create temporary files with proper encoding
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as temp_input:
+            temp_input.write(presentation_file.read())
+            temp_input_path = temp_input.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as temp_output:
+            temp_output_path = temp_output.name
+
+        try:
+            text_data = extract_text_from_presentation(temp_input_path)
+            if not text_data:
+                st.warning("Kein Text zum Übersetzen in der Präsentation gefunden.")
+                return None
+
+            # Initialize cache for this session
+            cache = {}
+
+            await batch_translate_texts_with_openai(text_data, target_language, cache, model, system_prompt)
+
+            # Load and save the presentation
+            prs = Presentation(temp_input_path)
+            prs.save(temp_output_path)
+
+            translated_prs = Presentation(temp_output_path)
+
+            # Apply translations
+            translated_text_data = []
+            cache_key_base = model + (system_prompt or DEFAULT_SYSTEM_PROMPT)
+            
+            for text_entry in text_data:
+                clean_text = safe_text_extraction(text_entry["text"])
+                cache_key = clean_text + cache_key_base
+                prompt_hash = generate_prompt_hash(cache_key)
+                translated_text = cache.get(prompt_hash, clean_text)
+                translated_text_entry = text_entry.copy()
+                translated_text_entry["translated_text"] = translated_text
+                translated_text_data.append(translated_text_entry)
+
+            for slide_number, slide in enumerate(translated_prs.slides, start=1):
+                for shape_index, shape in enumerate(slide.shapes):
+                    shape_id = f"slide{slide_number}_shape{shape_index}"
+
+                    if shape.has_text_frame:
+                        try:
+                            text_frame = shape.text_frame
+                            for paragraph in text_frame.paragraphs:
+                                for run in paragraph.runs:
+                                    if run.text.strip():
+                                        clean_original_text = safe_text_extraction(run.text)
+                                        for entry in translated_text_data:
+                                            if entry["shape_id"] == shape_id and safe_text_extraction(entry["text"]) == clean_original_text:
+                                                # Ensure proper encoding when setting the text
+                                                run.text = entry["translated_text"]
+                                                break
+                        except Exception as e:
+                            continue
+
+                    elif shape.has_table:
+                        try:
+                            for row_idx, row in enumerate(shape.table.rows):
+                                for col_idx, cell in enumerate(row.cells):
+                                    cell_shape_id = f"{shape_id}_row{row_idx}_col{col_idx}"
+                                    cell_translated_text_entry = next((entry for entry in translated_text_data if entry["shape_id"] == cell_shape_id), None)
+                                    if cell_translated_text_entry:
+                                        # Ensure proper encoding when setting the text
+                                        cell.text = cell_translated_text_entry["translated_text"]
+                        except Exception as e:
+                            continue
+
+            translated_prs.save(temp_output_path)
+            
+            # Read the translated file as bytes
+            with open(temp_output_path, 'rb') as f:
+                translated_bytes = f.read()
+            
+            return translated_bytes
+
+        except Exception as e:
+            st.error(f"Fehler während des Übersetzungsprozesses: {e}")
+            return None
+        finally:
+            # Clean up temporary files
+            try:
+                os.unlink(temp_input_path)
+                os.unlink(temp_output_path)
+            except:
+                pass
+
+    # Main Streamlit app content
+    st.markdown("Übersetze deine PowerPoint-Präsentationen mit OpenAI's GPT-Modellen")
+    
+    # Sidebar for configuration
+    with st.sidebar:
+        st.header("Konfiguration")
+        
+        # API Key input
         api_key = st.text_input(
-            "OpenAI API Key",
+            "OpenAI API-Schlüssel",
             type="password",
-            help="Gib deinen OpenAI API Key ein. Der Key wird nicht gespeichert.",
-            placeholder="sk-..."
+            help="Gib deinen OpenAI API-Schlüssel ein, um den Übersetzungsservice zu nutzen"
         )
         
-        # File Uploader
-        uploaded_file = st.file_uploader("PowerPoint-Datei hochladen", type=["pptx"])
+        if api_key:
+            st.session_state["api_key"] = api_key
+            st.success("✅ API-Schlüssel gesetzt!")
+        
+        # Model selection
+        selected_model_name = st.selectbox(
+            "KI-Modell",
+            options=list(MODEL_OPTIONS.keys()),
+            help="Wähle das KI-Modell für die Übersetzung. GPT-4.1-mini ist schneller und günstiger, GPT-4o bietet höchste Qualität."
+        )
+        
+        selected_model = MODEL_OPTIONS[selected_model_name]
+        
+        # Show model info
+        if "mini" in selected_model:
+            st.info("💡 GPT-4.1-mini: Schneller & 83% günstiger als GPT-4o")
+        else:
+            st.info("🎯 GPT-4o: Höchste Qualität & Genauigkeit")
+        
+        # Language selection
+        selected_language_name = st.selectbox(
+            "Zielsprache",
+            options=list(LANGUAGE_OPTIONS.keys()),
+            help="Wähle die Sprache aus, in die du deine Präsentation übersetzen möchtest"
+        )
+        
+        target_language = LANGUAGE_OPTIONS[selected_language_name]
+        
+        st.info(f"Ausgewählt: {selected_language_name} ({target_language})")
+    
+    # System prompt customization (collapsed by default)
+    with st.expander("⚙️ Systemprompt anpassen (Erweitert)", expanded=False):
+        st.markdown("**Hier kannst du das Systemprompt für die Übersetzung anpassen:**")
+        
+        custom_system_prompt = st.text_area(
+            "Systemprompt",
+            value=DEFAULT_SYSTEM_PROMPT,
+            height=150,
+            help="Verwende {target_language} als Platzhalter für die Zielsprache. Das Prompt sollte Anweisungen für JSON-Ausgabe enthalten."
+        )
+        
+        if st.button("🔄 Standard wiederherstellen"):
+            st.rerun()
+        
+        # Show preview of formatted prompt
+        if target_language:
+            st.markdown("**Vorschau (formatiert):**")
+            preview = custom_system_prompt.format(target_language=selected_language_name)
+            st.code(preview, language="text")
+    
+    # Main content area
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.header("Präsentation hochladen")
+        
+        uploaded_file = st.file_uploader(
+            "PowerPoint-Datei auswählen",
+            type=['pptx'],
+            help="Lade eine .pptx-Datei zum Übersetzen hoch"
+        )
         
         if uploaded_file is not None:
-            # Speichere die Datei im Session State
-            st.session_state.uploaded_file = uploaded_file
+            st.success(f"✅ Datei hochgeladen: {uploaded_file.name}")
+            
+            # Display file info
+            file_size = len(uploaded_file.getvalue()) / 1024 / 1024  # MB
+            st.info(f"Dateigröße: {file_size:.2f} MB")
+    
+    with col2:
+        st.header("Übersetzung")
         
-        # Modus-Auswahl
-        mode = st.selectbox(
-            "Modus",
-            options=["Editor", "Übersetzer"],
-            index=0,
-            help=("Editor: Korrigiert Texte in der gewählten Sprache\n"
-                  "Übersetzer: Übersetzt Texte in die gewählte Sprache")
-        )
-        
-        # Sprachauswahl
-        target_language = st.selectbox(
-            "Zielsprache",
-            options=["US English", "UK English", "Deutsch", "Französisch", "Italienisch", 
-                     "Dänisch", "Bulgarisch", "Holländisch", "Ungarisch", "Polnisch"],
-            index=0
-        )
-        
-        # Zusätzlicher Kontext
-        additional_context = st.text_area(
-            "Zusätzlicher Kontext (optional)",
-            help="Hier können zusätzliche Informationen oder Anweisungen für die KI eingeben werden, "
-                 "z.B. dass es sich um ein Transkript handelt oder Stil-Richtlinien oder Branchenkontext, etc...",
-            placeholder="Beispiel: Dies ist ein Transkript einer Sitzung. Bitte korrigiere die Grammatik und die Rechtschreibung",
-            max_chars=1000
-        )
-
-    # Prüfe ob API Key eingegeben wurde
-    if not api_key:
-        st.warning("Bitte gib einen OpenAI API Key ein, um fortzufahren.")
-        st.stop()
-
-    # OpenAI Client initialisieren
-    client = OpenAI(api_key=api_key)
-
-    def extract_text_from_pptx(uploaded_file):
-        prs = Presentation(uploaded_file)
-        texts = []
-        
-        for slide_number, slide in enumerate(prs.slides, 1):
-            for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text.strip():
+        if uploaded_file is not None and api_key:
+            if st.button("🚀 Präsentation übersetzen", type="primary"):
+                with st.spinner("Präsentation wird übersetzt..."):
                     try:
-                        # Überprüfe die Position des Shapes (ob es sich um den Haupttextbereich handelt)
-                        if hasattr(shape, "top") and hasattr(shape, "height"):
-                            slide_height = 7200000  # Standard PowerPoint-Höhe in EMUs
-                            shape_top = shape.top
-                            shape_bottom = shape.top + shape.height
-                            
-                            # Ignoriere obere 15% und untere 15% der Folie
-                            if (shape_top > slide_height * 0.15 and shape_bottom < slide_height * 0.85):
-                                texts.append({
-                                    "slide_number": slide_number,
-                                    "original_text": shape.text.strip(),
-                                    "corrected_text": "",
-                                    "status": "ausstehend"
-                                })
-                    except AttributeError:
-                        continue
-        
-        return pd.DataFrame(texts)
-
-    def check_text_with_gpt(text):
-        try:
-            # Erstelle ein sprachspezifisches Prompt
-            editor_templates = {
-                "US English": (
-                    "You are a professional editor specializing in US English. Please review and correct the following text, focusing on:\n"
-                    "1. Grammar and syntax according to US English rules\n"
-                    "2. Spelling using US English conventions\n"
-                    "3. Punctuation following US style guides\n"
-                    "4. Improving phrasing while maintaining the original meaning\n"
-                    "5. Ensuring consistency with US English vocabulary and expressions\n\n"
-                    "Important: Preserve all formatting, line breaks, font sizes, and text styling (bold, italic, etc.). Only correct the language aspects mentioned above.\n\n"
-                    "If the text is too short or requires no corrections, respond with a single hyphen '-'"
-                ),
-                "UK English": (
-                    "You are a professional editor specializing in British English. Please review and correct the following text, focusing on:\n"
-                    "1. Grammar and syntax according to British English rules\n"
-                    "2. Spelling using British English conventions\n"
-                    "3. Punctuation following UK style guides\n"
-                    "4. Improving phrasing while maintaining the original meaning\n"
-                    "5. Ensuring consistency with British English vocabulary and expressions\n\n"
-                    "Important: Preserve all formatting, line breaks, font sizes, and text styling (bold, italic, etc.). Only correct the language aspects mentioned above.\n\n"
-                    "If the text is too short or requires no corrections, respond with a single hyphen '-'"
-                ),
-                "Deutsch": (
-                    "Du bist ein professioneller Lektor für die deutsche Sprache. Bitte überprüfe und korrigiere den folgenden Text mit Fokus auf:\n"
-                    "1. Grammatik und Syntax nach den Regeln der deutschen Sprache\n"
-                    "2. Rechtschreibung nach aktueller deutscher Rechtschreibreform\n"
-                    "3. Zeichensetzung nach deutschen Rechtschreibregeln\n"
-                    "4. Verbesserung der Formulierungen unter Beibehaltung der ursprünglichen Bedeutung\n"
-                    "5. Sicherstellung einer einheitlichen deutschen Ausdrucksweise\n\n"
-                    "Wichtig: Bewahre alle Formatierungen, Zeilenumbrüche, Schriftgrößen und Textauszeichnungen (fett, kursiv, etc.). Korrigiere ausschließlich die oben genannten sprachlichen Aspekte.\n\n"
-                    "Falls der Text zu kurz ist oder keine Korrekturen benötigt, antworte mit einem einzelnen Bindestrich '-'"
-                ),
-                "Französisch": (
-                    "Tu es un éditeur professionnel spécialisé en français. Examine et corrige le texte suivant en te concentrant sur:\n"
-                    "1. La grammaire et la syntaxe selon les règles du français\n"
-                    "2. L'orthographe selon les conventions françaises actuelles\n"
-                    "3. La ponctuation selon les règles françaises\n"
-                    "4. L'amélioration des formulations tout en conservant le sens original\n"
-                    "5. L'assurance d'une expression française cohérente et élégante\n\n"
-                    "Important: Conserve tous les formatages, sauts de ligne, tailles de police et styles de texte (gras, italique, etc.). Corrige uniquement les aspects linguistiques mentionnés ci-dessus.\n\n"
-                    "Si le texte est trop court ou ne nécessite aucune correction, réponds avec un simple tiret '-'"
-                ),
-                "Italienisch": (
-                    "Sei un editor professionale specializzato in italiano. Esamina e correggi il seguente testo, concentrandoti su:\n"
-                    "1. Grammatica e sintassi secondo le regole dell'italiano\n"
-                    "2. Ortografia secondo le convenzioni italiane attuali\n"
-                    "3. Punteggiatura secondo le regole italiane\n"
-                    "4. Miglioramento delle formulazioni mantenendo il significato originale\n"
-                    "5. Garanzia di un'espressione italiana coerente ed elegante\n\n"
-                    "Importante: Mantieni tutta la formattazione, le interruzioni di riga e lo stile del testo. Corrigi solo gli aspetti linguistici menzionati sopra.\n\n"
-                    "Se il testo è troppo breve o non necessita correzioni, rispondi con un singolo trattino '-'"
-                ),
-                "Dänisch": (
-                    "Du er en professionel redaktør specialiseret i dansk. Gennemgå og ret følgende tekst med fokus på:\n"
-                    "1. Grammatik og syntaks efter danske regler\n"
-                    "2. Stavning efter danske konventioner\n"
-                    "3. Tegnsætning efter danske regler\n"
-                    "4. Forbedring af formuleringer med bibeholdelse af den oprindelige betydning\n"
-                    "5. Sikring af et konsistent dansk sprog\n\n"
-                    "Vigtigt: Bevar al formatering, linjeskift og tekststil. Ret kun de sproglige aspekter nævnt ovenfor.\n\n"
-                    "Hvis teksten er for kort eller ikke kræver rettelser, svar med en enkelt bindestreg '-'"
-                ),
-                "Bulgarisch": (
-                    "Вие сте професионален редактор, специализиран в български език. Прегледайте и коригирайте следния текст, фокусирайки се върху:\n"
-                    "1. Граматика и синтаксис според правилата на българския език\n"
-                    "2. Правопис според българските конвенции\n"
-                    "3. Пунктуация според българските правила\n"
-                    "4. Подобряване на формулировките при запазване на оригиналния смисъл\n"
-                    "5. Осигуряване на последователен български изказ\n\n"
-                    "Важно: Запазете цялото форматиране, преходи между редовете и стил на текста. Коригирайте само езиковите аспекти, посочени по-горе.\n\n"
-                    "Ако текстът е твърде кратък или не се нуждае от корекции, отговорете с единично тире '-'"
-                ),
-                "Holländisch": (
-                    "Je bent een professionele redacteur gespecialiseerd in het Nederlands. Controleer en corrigeer de volgende tekst, met focus op:\n"
-                    "1. Grammatica en syntaxis volgens Nederlandse regels\n"
-                    "2. Spelling volgens Nederlandse conventies\n"
-                    "3. Interpunctie volgens Nederlandse regels\n"
-                    "4. Verbetering van formuleringen met behoud van de oorspronkelijke betekenis\n"
-                    "5. Zorgen voor consistent Nederlands taalgebruik\n\n"
-                    "Belangrijk: Behoud alle opmaak, regeleinden en tekststijl. Corrigeer alleen de hierboven genoemde taalaspecten.\n\n"
-                    "Als de tekst te kort is of geen correcties nodig heeft, antwoord dan met een enkel streepje '-'"
-                ),
-                "Ungarisch": (
-                    "Ön egy magyar nyelvre szakosodott professzionális szerkesztő. Kérjük, ellenőrizze és javítsa a következő szöveget, koncentrálva:\n"
-                    "1. Nyelvtan és mondattan a magyar szabályok szerint\n"
-                    "2. Helyesírás a magyar konvenciók szerint\n"
-                    "3. Központozás a magyar szabályok szerint\n"
-                    "4. Megfogalmazások javítása az eredeti jelentés megtartásával\n"
-                    "5. Következetes magyar nyelvhasználat biztosítása\n\n"
-                    "Fontos: Őrizze meg az összes formázást, sortörést és szövegstílust. Csak a fent említett nyelvi szempontokat javítsa.\n\n"
-                    "Ha a szöveg túl rövid vagy nem igényel javítást, válaszoljon egyetlen kötőjellel '-'"
-                ),
-                "Polnisch": (
-                    "Jesteś profesjonalnym redaktorem specjalizującym się w języku polskim. Przejrzyj i popraw następujący tekst, skupiając się na:\n"
-                    "1. Gramatyce i składni według zasad języka polskiego\n"
-                    "2. Pisowni zgodnej z polskimi konwencjami\n"
-                    "3. Interpunkcji według polskich zasad\n"
-                    "4. Poprawie sformułowań przy zachowaniu oryginalnego znaczenia\n"
-                    "5. Zapewnieniu spójnego języka polskiego\n\n"
-                    "Ważne: Zachowaj całe formatowanie, podziały wierszy i styl tekstu. Poprawiaj tylko wymienione wyżej aspekty językowe.\n\n"
-                    "Jeśli tekst jest zbyt krótki lub jest już po polsku, odpowiedz pojedynczym myślnikiem '-'"
-                )
-            }
-            translator_templates = {
-                "US English": (
-                    "You are a professional translator. Translate the following text into US English.\n\n"
-                    "Important guidelines:\n"
-                    "1. Maintain the original meaning and tone\n"
-                    "2. Use US English spelling and expressions\n"
-                    "3. Preserve all formatting, line breaks, and text styling (bold, italic, etc.)\n"
-                    "4. Ensure natural, fluent language appropriate for the context\n"
-                    "5. Keep any technical terms or proper names as they are unless there's a standard English equivalent\n\n"
-                    "If the text is too short or is already in English, respond with a single hyphen '-'"
-                ),
-                "UK English": (
-                    "You are a professional translator. Translate the following text into British English.\n\n"
-                    "Important guidelines:\n"
-                    "1. Maintain the original meaning and tone\n"
-                    "2. Use British English spelling and expressions\n"
-                    "3. Preserve all formatting, line breaks, and text styling (bold, italic, etc.)\n"
-                    "4. Ensure natural, fluent language appropriate for the context\n"
-                    "5. Keep any technical terms or proper names as they are unless there's a standard English equivalent\n\n"
-                    "If the text is too short or is already in English, respond with a single hyphen '-'"
-                ),
-                "Deutsch": (
-                    "Du bist ein professioneller Übersetzer. Übersetze den folgenden Text ins Deutsche.\n\n"
-                    "Wichtige Richtlinien:\n"
-                    "1. Bewahre die ursprüngliche Bedeutung und den Ton\n"
-                    "2. Verwende natürliches, zeitgemäßes Deutsch\n"
-                    "3. Behalte alle Formatierungen, Zeilenumbrüche und Textauszeichnungen (fett, kursiv, etc.) bei\n"
-                    "4. Stelle eine flüssige, dem Kontext angemessene Sprache sicher\n"
-                    "5. Behalte Fachbegriffe oder Eigennamen bei, außer es gibt eine standardisierte deutsche Entsprechung\n\n"
-                    "Falls der Text zu kurz ist oder bereits auf Deutsch ist, antworte mit einem einzelnen Bindestrich '-'"
-                ),
-                "Französisch": (
-                    "Tu es un traducteur professionnel. Traduis le texte suivant en français.\n\n"
-                    "Directives importantes:\n"
-                    "1. Conserve le sens et le ton d'origine\n"
-                    "2. Utilise un français naturel et contemporain\n"
-                    "3. Préserve tous les formatages, sauts de ligne et styles de texte (gras, italique, etc.)\n"
-                    "4. Assure un langage fluide et approprié au contexte\n"
-                    "5. Conserve les termes techniques ou noms propres sauf s'il existe un équivalent français standard\n\n"
-                    "Si le texte est trop court ou déjà en français, réponds avec un simple tiret '-'"
-                ),
-                "Italienisch": (
-                    "Sei un traduttore professionista. Traduci il seguente testo in italiano.\n\n"
-                    "Linee guida importanti:\n"
-                    "1. Mantieni il significato e il tono originale\n"
-                    "2. Usa un italiano naturale e contemporaneo\n"
-                    "3. Preserva tutta la formattazione, le interruzioni di riga e lo stile del testo\n"
-                    "4. Assicura un linguaggio fluido e appropriato al contesto\n"
-                    "5. Mantieni i termini tecnici o i nomi propri a meno che non esista un equivalente italiano standard\n\n"
-                    "Se il testo è troppo breve o è già in italiano, rispondi con un singolo trattino '-'"
-                ),
-                "Dänisch": (
-                    "Du er en professionel oversætter. Oversæt følgende tekst til dansk.\n\n"
-                    "Vigtige retningslinjer:\n"
-                    "1. Bevar den oprindelige betydning og tone\n"
-                    "2. Brug naturligt, moderne dansk\n"
-                    "3. Bevar al formatering, linjeskift og tekststil\n"
-                    "4. Sikr et flydende sprog, der passer til konteksten\n"
-                    "5. Behold tekniske termer eller egennavne, medmindre der findes en standard dansk ækvivalent\n\n"
-                    "Hvis teksten er for kort eller allerede er på dansk, svar med en enkelt bindestreg '-'"
-                ),
-                "Bulgarisch": (
-                    "Вие сте професионален преводач. Преведете следния текст на български.\n\n"
-                    "Важни насоки:\n"
-                    "1. Запазете оригиналното значение и тон\n"
-                    "2. Използвайте естествен, съвременен български език\n"
-                    "3. Запазете цялото форматиране, преходи между редовете и стил на текста\n"
-                    "4. Осигурете плавен език, подходящ за контекста\n"
-                    "5. Запазете техническите термини или собствените имена, освен ако няма стандартен български еквивалент\n\n"
-                    "Ако текстът е твърде кратък или вече е на български, отговорете с единично тире '-'"
-                ),
-                "Holländisch": (
-                    "Je bent een professionele vertaler. Vertaal de volgende tekst naar het Nederlands.\n\n"
-                    "Belangrijke richtlijnen:\n"
-                    "1. Behoud de originele betekenis en toon\n"
-                    "2. Gebruik natuurlijk, hedendaags Nederlands\n"
-                    "3. Behoud alle opmaak, regeleinden en tekststijl\n"
-                    "4. Zorg voor vloeiende taal die past bij de context\n"
-                    "5. Behoud technische termen of eigennamen tenzij er een standaard Nederlands equivalent bestaat\n\n"
-                    "Als de tekst te kort is of al in het Nederlands is, antwoord dan met een enkel streepje '-'"
-                ),
-                "Ungarisch": (
-                    "Ön professzionális fordító. Fordítsa le a következő szöveget magyar nyelvre.\n\n"
-                    "Fontos irányelvek:\n"
-                    "1. Őrizze meg az eredeti jelentést és hangnemet\n"
-                    "2. Használjon természetes, modern magyar nyelvet\n"
-                    "3. Őrizze meg az összes formázást, sortörést és szövegstílust\n"
-                    "4. Biztosítson folyékony, a kontextushoz illő nyelvezetet\n"
-                    "5. Tartsa meg a műszaki kifejezéseket vagy tulajdonneveket, hacsak nincs szabványos magyar megfelelőjük\n\n"
-                    "Ha a szöveg túl rövid vagy már magyar nyelvű, válaszoljon egyetlen kötőjellel '-'"
-                ),
-                "Polnisch": (
-                    "Jesteś profesjonalnym tłumaczem. Przetłumacz następujący tekst na język polski.\n\n"
-                    "Ważne wytyczne:\n"
-                    "1. Zachowaj oryginalne znaczenie i ton\n"
-                    "2. Używaj naturalnego, współczesnego języka polskiego\n"
-                    "3. Zachowaj całe formatowanie, podziały wierszy i styl tekstu\n"
-                    "4. Zapewnij płynny język odpowiedni do kontekstu\n"
-                    "5. Zachowaj terminy techniczne lub nazwy własne, chyba że istnieje standardowy polski odpowiednik\n\n"
-                    "Jeśli tekst jest zbyt krótki lub jest już po polsku, odpowiedz pojedynczym myślnikiem '-'"
-                )
-            }
-            # Wähle das entsprechende Template basierend auf Modus und Sprache
-            templates = editor_templates if mode == "Editor" else translator_templates
-            system_prompt = templates[target_language]
-            
-            # Füge zusätzlichen Kontext hinzu, wenn vorhanden
-            if additional_context:
-                system_prompt += f"\n\nZusätzlicher Kontext:\n{additional_context}"
-            
-            # Debug: Zeige System Prompt
-            with st.expander("Debug: System Prompt"):
-                st.code(system_prompt, language="text")
-            
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text}
-                ]
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            st.error(f"Fehler bei der GPT-Anfrage: {str(e)}")
-            return text
-
-    def create_diff_html(original, corrected):
-        if corrected == '-' or original == corrected:
-            return "Keine Änderungen"
-        
-        def split_into_words(text):
-            return text.replace('\n', ' \n ').split()
-        
-        original_words = split_into_words(original)
-        corrected_words = split_into_words(corrected)
-        
-        matcher = difflib.SequenceMatcher(None, original_words, corrected_words)
-        
-        html = ['''
-            <div style="font-family: arial; 
-                        white-space: pre-wrap; 
-                        line-height: 1.5; 
-                        font-size: 1.1em;">
-        ''']
-        
-        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag == 'replace':
-                html.append(f'<span style="background-color: #ffcdd2; color: #c62828; text-decoration: line-through; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(original_words[i1:i2])}</span>')
-                html.append(f'<span style="background-color: #c8e6c9; color: #2e7d32; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(corrected_words[j1:j2])}</span>')
-            elif tag == 'delete':
-                html.append(f'<span style="background-color: #ffcdd2; color: #c62828; text-decoration: line-through; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(original_words[i1:i2])}</span>')
-            elif tag == 'insert':
-                html.append(f'<span style="background-color: #c8e6c9; color: #2e7d32; padding: 2px 4px; border-radius: 3px; margin: 0 2px;">{" ".join(corrected_words[j1:j2])}</span>')
-            elif tag == 'equal':
-                html.append(f'<span style="color: #37474f;">{" ".join(original_words[i1:i2])}</span>')
-        
-        html.append('</div>')
-        return "".join(html)
-
-    # Hauptlogik: Verarbeite die Präsentation erst nach Klick auf den Button "Prozess starten"
-    if uploaded_file is not None:
-        if st.button("Prozess starten"):
-            st.session_state.corrections_df = extract_text_from_pptx(uploaded_file)
-            
-            # Zeige Gesamtanzahl der Folien
-            total_slides = st.session_state.corrections_df['slide_number'].max()
-            st.info(f"Präsentation enthält {total_slides} Folien")
-            
-            # Progress Bar für den Gesamtfortschritt
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            total_items = len(st.session_state.corrections_df)
-            
-            # GPT-Korrektur für jeden Textelement durchführen
-            for idx, row in st.session_state.corrections_df.iterrows():
-                current_slide = row['slide_number']
-                status_text.text(f"Überprüfe Folie {current_slide} von {total_slides} ({idx + 1}/{total_items} Textelemente)")
-                progress_bar.progress((idx + 1) / total_items)
-                
-                corrected = check_text_with_gpt(row['original_text'])
-                st.session_state.corrections_df.at[idx, 'corrected_text'] = corrected
-            
-            progress_bar.empty()
-            status_text.empty()
-            st.success(f"Überprüfung abgeschlossen! {total_items} Textelemente in {total_slides} Folien wurden verarbeitet.")
-        
-        # Anzeige der Korrekturen (falls bereits verarbeitet)
-        if 'corrections_df' in st.session_state:
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.header("Originaltext")
-            with col2:
-                st.header("Korrigierter Text")
-            with col3:
-                st.header("Änderungen")
-            
-            for idx, row in st.session_state.corrections_df.iterrows():
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.text_area(
-                        f"Folie {row['slide_number']} - Original",
-                        row['original_text'],
-                        key=f"original_{idx}",
-                        disabled=True
-                    )
-                
-                with col2:
-                    corrected = st.text_area(
-                        f"Folie {row['slide_number']} - Korrigiert",
-                        row['corrected_text'],
-                        key=f"corrected_{idx}"
-                    )
-                    st.session_state.corrections_df.at[idx, 'corrected_text'] = corrected
-                
-                with col3:
-                    diff_html = create_diff_html(row['original_text'], corrected)
-                    st.markdown(diff_html, unsafe_allow_html=True)
-        
-        # Word-Dokument Erstellen Button
-        if st.button("Word-Dokument erstellen"):
-            def create_word_document():
-                def clean_text_for_word(text):
-                    if not isinstance(text, str):
-                        return ""
-                    # Entferne Steuerzeichen, behalte Zeilenumbrüche
-                    text = ''.join(char for char in text if char == '\n' or (ord(char) >= 32 and ord(char) != 127))
-                    text = re.sub(r'\n{3,}', '\n\n', text)
-                    return text
-
-                def create_word_diff(original, corrected):
-                    if corrected == '-' or original == corrected:
-                        return "Keine Änderungen"
-                    
-                    def split_into_words(text):
-                        lines = text.split('\n')
-                        result = []
-                        for line in lines:
-                            result.extend(line.split())
-                            result.append('\n')
-                        return result[:-1]
-                    
-                    original_words = split_into_words(original)
-                    corrected_words = split_into_words(corrected)
-                    matcher = difflib.SequenceMatcher(None, original_words, corrected_words)
-                    
-                    result = []
-                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                        if tag == 'replace':
-                            result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
-                            result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
-                        elif tag == 'delete':
-                            result.append(('delete', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
-                        elif tag == 'insert':
-                            result.append(('insert', ' '.join(corrected_words[j1:j2]).replace(' \n ', '\n')))
-                        elif tag == 'equal':
-                            result.append(('equal', ' '.join(original_words[i1:i2]).replace(' \n ', '\n')))
-                    return result
-
-                try:
-                    doc = Document()
-                    doc.add_heading('Korrekturübersicht PowerPoint-Präsentation', 0)
-                    
-                    header_style = doc.styles.add_style('HeaderStyle', 1)
-                    header_style.font.bold = True
-                    header_style.font.size = Pt(11)
-                    
-                    table = doc.add_table(rows=1, cols=3)
-                    table.style = 'Table Grid'
-                    table.autofit = False
-                    for i, width in enumerate([1667, 1667, 1666]):
-                        table.columns[i].width = width
-                    
-                    header_cells = table.rows[0].cells
-                    header_cells[0].text = "Originaltext"
-                    header_cells[1].text = "Korrigierter Text"
-                    header_cells[2].text = "Änderungen"
-                    
-                    for cell in header_cells:
-                        cell.paragraphs[0].style = header_style
-                        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    for _, row in st.session_state.corrections_df.iterrows():
-                        title_row = table.add_row()
-                        title_cell = title_row.cells[0]
-                        title_cell.merge(title_row.cells[-1])
-                        title_cell.text = f"Folie {row['slide_number']}"
-                        title_cell.paragraphs[0].style = header_style
+                        # Reset file pointer
+                        uploaded_file.seek(0)
                         
-                        content_row = table.add_row()
-                        cells = content_row.cells
+                        # Use custom system prompt if different from default
+                        system_prompt_to_use = custom_system_prompt if custom_system_prompt != DEFAULT_SYSTEM_PROMPT else None
                         
-                        cells[0].text = clean_text_for_word(row['original_text'])
-                        cells[1].text = clean_text_for_word(row['corrected_text'])
-                        
-                        diff_paragraph = cells[2].paragraphs[0]
-                        diff_results = create_word_diff(
-                            clean_text_for_word(row['original_text']),
-                            clean_text_for_word(row['corrected_text'])
+                        # Translate the presentation
+                        translated_bytes = asyncio.run(
+                            translate_presentation(uploaded_file, target_language, selected_model, system_prompt_to_use)
                         )
                         
-                        if isinstance(diff_results, str):
-                            diff_paragraph.add_run(diff_results)
+                        if translated_bytes:
+                            # Generate download filename
+                            original_name = uploaded_file.name.replace('.pptx', '')
+                            model_suffix = "mini" if "mini" in selected_model else "4o"
+                            download_filename = f"{original_name}_übersetzt_{target_language}_{model_suffix}.pptx"
+                            
+                            st.success("🎉 Übersetzung abgeschlossen!")
+                            
+                            # Download button
+                            st.download_button(
+                                label="📥 Übersetzte Präsentation herunterladen",
+                                data=translated_bytes,
+                                file_name=download_filename,
+                                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                            )
                         else:
-                            for diff_type, text in diff_results:
-                                text_parts = text.split('\n')
-                                for i, part in enumerate(text_parts):
-                                    if part.strip():
-                                        run = diff_paragraph.add_run(part)
-                                        if diff_type == 'delete':
-                                            run.font.color.rgb = RGBColor(198, 40, 40)
-                                            run.font.strike = True
-                                        elif diff_type == 'insert':
-                                            run.font.color.rgb = RGBColor(46, 125, 50)
-                                    if i < len(text_parts) - 1:
-                                        diff_paragraph.add_run('\n')
-                    
-                    doc_buffer = BytesIO()
-                    doc.save(doc_buffer)
-                    doc_buffer.seek(0)
-                    return doc_buffer
-                except Exception as e:
-                    st.error(f"Fehler beim Erstellen des Word-Dokuments: {str(e)}")
-                    return None
-            
-            doc_buffer = create_word_document()
-            if doc_buffer is not None:
-                st.download_button(
-                    label="Word-Dokument herunterladen",
-                    data=doc_buffer,
-                    file_name="powerpoint_korrekturen.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    key="word_download"
-                )
+                            st.error("Übersetzung fehlgeschlagen. Bitte versuche es erneut.")
+                            
+                    except Exception as e:
+                        st.error(f"Ein Fehler ist aufgetreten: {str(e)}")
+        
+        elif not api_key:
+            st.warning("⚠️ Bitte gib deinen OpenAI API-Schlüssel in der Seitenleiste ein")
+        elif uploaded_file is None:
+            st.info("📤 Bitte lade eine PowerPoint-Datei hoch, um zu beginnen")
+    
+    # Model comparison info
+    with st.expander("🔍 Modell-Vergleich"):
+        st.markdown("""
+        | Modell | Geschwindigkeit | Kosten | Qualität | Beste Verwendung |
+        |--------|----------------|--------|----------|------------------|
+        | **GPT-4.1-mini** | Schneller | 83% günstiger | Sehr gut | Alltägliche Übersetzungen, große Mengen |
+        | **GPT-4o** | Standard | Standard | Höchste | Wichtige Dokumente, maximale Genauigkeit |
+        
+        **GPT-4.1-mini Vorteile:**
+        - ⚡ Deutlich schnellere Verarbeitung
+        - 💰 Erheblich niedrigere Kosten
+        - 🎯 Sehr gute Qualität für die meisten Anwendungsfälle
+        - 📄 1 Million Token Kontext (wie GPT-4o)
+        """)
+    
+    # Instructions
+    with st.expander("📖 Wie man diese App verwendet"):
+        st.markdown("""
+        1. **OpenAI API-Schlüssel besorgen**: Frag Tobias oder Jonathan um den API-Schlüssel zu erhalten
+        2. **API-Schlüssel eingeben**: Füge deinen API-Schlüssel in der Seitenleiste ein (er wird sicher in deiner Sitzung gespeichert)
+        3. **Modell auswählen**: Wähle zwischen GPT-4.1-mini (Standard, schneller & günstiger) oder GPT-4o (höchste Qualität)
+        4. **Sprache auswählen**: Wähle deine Zielsprache aus dem Dropdown-Menü
+        5. **Systemprompt anpassen** (optional): Passe das Übersetzungsverhalten im erweiterten Bereich an
+        6. **Datei hochladen**: Lade deine PowerPoint (.pptx) Datei hoch
+        7. **Übersetzen**: Klicke auf den Übersetzen-Button und warte, bis der Prozess abgeschlossen ist
+        8. **Herunterladen**: Lade deine übersetzte Präsentation herunter
+        
+        **Hinweis**: Der Übersetzungsprozess kann je nach Größe deiner Präsentation einige Minuten dauern.
+        """)
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("Erstellt mit ❤️ unter Verwendung von Streamlit und OpenAI GPT-Modellen")
 
+# Call the function when the script is run directly
 if __name__ == "__main__":
-    powerpoint_app()
+    powerpoint_app() 
