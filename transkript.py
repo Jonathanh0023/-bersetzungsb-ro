@@ -172,11 +172,36 @@ def upload_to_hosting_service(uploaded_file):
 def process_audio(uploaded_file=None, direct_url=None, num_speakers=2, language="", prompt="", base_name=None, speaker_names=None, translate=False):
     try:
         # Erstelle einen expliziten Client mit dem Token
-        if 'replicate_token' in st.session_state:
-            client = replicate.Client(api_token=st.session_state.replicate_token)
+        if 'replicate_token' not in st.session_state:
+            raise ValueError("Replicate API Token nicht gefunden. Bitte Token eingeben.")
+            
+        client = replicate.Client(api_token=st.session_state.replicate_token)
+        
+        # Validate inputs
+        if not direct_url and not uploaded_file:
+            raise ValueError("Either a direct URL or an uploaded file is required.")
             
         if direct_url:  # If a direct URL is provided
             file_url = direct_url
+            
+            # Convert tmpfiles.org URLs to direct download links
+            if "tmpfiles.org" in file_url and "/dl/" not in file_url:
+                # Convert from http://tmpfiles.org/XXXXX/filename to https://tmpfiles.org/dl/XXXXX/filename
+                file_url = file_url.replace("http://tmpfiles.org/", "https://tmpfiles.org/dl/")
+                st.info(f"URL konvertiert zu direktem Download-Link: {file_url}")
+            
+            st.info(f"Verwende direkte URL: {file_url}")
+            
+            # Test if the URL is accessible
+            try:
+                response = requests.head(file_url, timeout=10)
+                if response.status_code != 200:
+                    st.warning(f"URL Test: Status Code {response.status_code}. Versuche trotzdem mit der Transkription...")
+                else:
+                    st.success(f"URL erfolgreich getestet (Status: {response.status_code})")
+            except Exception as url_error:
+                st.warning(f"URL Test fehlgeschlagen: {url_error}. Versuche trotzdem mit der Transkription...")
+                
         elif uploaded_file:  # If an audio file is uploaded
             # Save the uploaded file to a temporary location
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
@@ -185,30 +210,47 @@ def process_audio(uploaded_file=None, direct_url=None, num_speakers=2, language=
                 
                 # Print the file URL to verify
                 print(f"Uploaded file URL: {file_url}")
-                
-        else:
-            raise ValueError("Either a direct URL or an uploaded file is required.")
+                st.info(f"Datei hochgeladen und URL erstellt: {file_url}")
+        
+        # Validate file URL
+        if not file_url:
+            raise ValueError("Keine gültige Datei-URL erhalten.")
+            
+        # Log the input parameters
+        st.info(f"Starte Transkription mit folgenden Parametern:")
+        st.info(f"- Anzahl Sprecher: {num_speakers}")
+        st.info(f"- Sprache: {language}")
+        st.info(f"- Prompt: {prompt}")
+        st.info(f"- Übersetzen: {translate}")
 
         # Verwende den Client anstelle von replicate.run
-        output = client.run(
-            "thomasmol/whisper-diarization:cbd15da9f839c5f932742f86ce7def3a03c22e2b4171d42823e83e314547003f",
-            input={
-                "file_url": file_url,
-                "group_segments": True,
-                "num_speakers": num_speakers,
-                "language": language,
-                "prompt": prompt,
-                "offset_seconds": 0,
-                "translate": translate,
-            }
-        )
+        st.info("Sende Anfrage an Replicate API...")
+        try:
+            output = client.run(
+                "thomasmol/whisper-diarization:cbd15da9f839c5f932742f86ce7def3a03c22e2b4171d42823e83e314547003f",
+                input={
+                    "file_url": file_url,
+                    "group_segments": True,
+                    "num_speakers": num_speakers,
+                    "language": language,
+                    "prompt": prompt,
+                    "offset_seconds": 0,
+                    "translate": translate,
+                }
+            )
+        except Exception as api_error:
+            raise AudioProcessError(f'Replicate API Fehler: {str(api_error)}')
+        
+        st.info(f"Antwort von Replicate API erhalten. Output-Typ: {type(output)}")
         
         if base_name:
             output_filename = f"{base_name}.docx"
         else:
             output_filename = TRANSCRIPT_FILENAME
 
-        if 'segments' in output:
+        # Check if output is not None and contains segments
+        if output is not None and isinstance(output, dict) and 'segments' in output:
+            st.info(f"Segments gefunden: {len(output['segments'])} Segmente")
             output_path = os.path.join(os.getcwd(), output_filename)
             format_json_to_chat(output['segments'], output_path, speaker_names)
 
@@ -218,7 +260,16 @@ def process_audio(uploaded_file=None, direct_url=None, num_speakers=2, language=
 
             return output_path, transcript_download_link  # Return both the local path and download link
         else:
-            raise AudioProcessError('The output is not as expected')
+            # Provide detailed information about what we received
+            if output is None:
+                raise AudioProcessError('Die Replicate API hat None zurückgegeben. Dies kann folgende Ursachen haben:\n- Ungültiger API Token\n- Datei-URL nicht erreichbar\n- Netzwerkprobleme\n- API-Limit erreicht')
+            elif not isinstance(output, dict):
+                raise AudioProcessError(f'Unerwarteter Output-Typ: {type(output)}. Erwartet: dict. Output: {str(output)[:200]}...')
+            elif 'segments' not in output:
+                available_keys = list(output.keys()) if isinstance(output, dict) else "Keine Keys verfügbar"
+                raise AudioProcessError(f'Keine "segments" im Output gefunden. Verfügbare Keys: {available_keys}. Output: {str(output)[:200]}...')
+            else:
+                raise AudioProcessError(f'Unbekannter Fehler. Output: {str(output)[:200]}...')
     except Exception as e:
         raise AudioProcessError(f'Error in processing audio: {e}')
 
