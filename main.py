@@ -7,6 +7,8 @@ from key_account_app import key_account_app
 from matching_app import matching_app
 from powerpoint_app import powerpoint_app
 from word_app import word_app
+from excel_app import excel_app
+from unified_document_app import unified_document_app
 from transkript import main as transkript_app
 from Transkriptverabeitungsapp import word_app as transkript_verarbeitung_app
 from jobs_app import jobs_app  # Neue Import-Zeile für die Jobs-App
@@ -39,6 +41,10 @@ def main():
             powerpoint_app()
         elif st.session_state.app_selected == "word":
             word_app()
+        elif st.session_state.app_selected == "excel":
+            excel_app()
+        elif st.session_state.app_selected == "unified_documents":
+            unified_document_app()
         elif st.session_state.app_selected == "transkript":
             transkript_app()
         elif st.session_state.app_selected == "transkript_verarbeitung":

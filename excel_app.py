@@ -5,13 +5,10 @@ import os
 from pathlib import Path
 import difflib
 from html import escape
-from docx import Document
+from openpyxl import load_workbook, Workbook
 from io import BytesIO
 import re
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 import openai
-from docx.shared import Inches
 import json
 from typing import List, Dict
 import hashlib
@@ -21,13 +18,13 @@ import asyncio
 import tempfile
 import io
 
-def word_app():
+def excel_app():
     # Titel der App
-    st.title("BonsAI Word Dokument Sprachprüfung und Korrektur")
+    st.title("BonsAI Excel Dokument Sprachprüfung und Korrektur")
 
     # --- Constants and Configurations ---
 
-    SUPPORTED_EXTENSIONS = ('.docx',)
+    SUPPORTED_EXTENSIONS = ('.xlsx', '.xls')
 
     # Model options for the dropdown
     MODEL_OPTIONS = {
@@ -173,57 +170,50 @@ Gib die Übersetzung als JSON-Objekt genau wie folgt zurück: {{"translated": "<
                     return prompt
         return prompt
 
-    def extract_text_from_document(document_path: str) -> List[Dict]:
-        """Extracts text and context from a Word document."""
+    def extract_text_from_excel(file_path: str) -> List[Dict]:
+        """Extracts text and context from an Excel file."""
         try:
-            doc = Document(document_path)
+            # Load the workbook
+            workbook = load_workbook(file_path, data_only=True)
             text_data = []
 
-            # Extract text from paragraphs
-            for para_index, paragraph in enumerate(doc.paragraphs):
-                if paragraph.text.strip():
-                    # Safely extract and normalize text
-                    clean_text = safe_text_extraction(paragraph.text)
-                    if clean_text:
-                        # Determine paragraph type based on style
-                        para_type = "BODY"
-                        if paragraph.style.name.startswith('Heading'):
-                            para_type = "HEADING"
-                        elif paragraph.style.name.startswith('Title'):
-                            para_type = "TITLE"
-                        elif paragraph.style.name.startswith('Subtitle'):
-                            para_type = "SUBTITLE"
-
-                        text_data.append({
-                            "element_type": "paragraph",
-                            "element_id": f"para_{para_index}",
-                            "text": clean_text,
-                            "style": paragraph.style.name,
-                            "para_type": para_type,
-                            "para_index": para_index
-                        })
-
-            # Extract text from tables
-            for table_index, table in enumerate(doc.tables):
-                for row_index, row in enumerate(table.rows):
-                    for col_index, cell in enumerate(row.cells):
-                        if cell.text.strip():
-                            # Safely extract and normalize text
-                            clean_text = safe_text_extraction(cell.text)
-                            if clean_text:
-                                text_data.append({
-                                    "element_type": "table",
-                                    "element_id": f"table_{table_index}_row_{row_index}_col_{col_index}",
-                                    "text": clean_text,
-                                    "table_index": table_index,
-                                    "row_index": row_index,
-                                    "col_index": col_index
-                                })
+            # Extract text from all worksheets
+            for sheet_index, sheet_name in enumerate(workbook.sheetnames):
+                worksheet = workbook[sheet_name]
+                
+                # Iterate through all cells in the worksheet
+                for row in worksheet.iter_rows():
+                    for cell in row:
+                        if cell.value is not None and str(cell.value).strip():
+                            # Only process text cells (not numbers, dates, etc.)
+                            cell_value = str(cell.value).strip()
+                            # Skip cells that are purely numeric
+                            try:
+                                float(cell_value)
+                                continue  # Skip numeric values
+                            except ValueError:
+                                pass  # Continue with text processing
+                            
+                            # Check if it looks like text (contains letters)
+                            if re.search(r'[a-zA-ZäöüÄÖÜß]', cell_value):
+                                # Safely extract and normalize text
+                                clean_text = safe_text_extraction(cell_value)
+                                if clean_text and len(clean_text) > 1:  # Skip single characters
+                                    text_data.append({
+                                        "element_type": "cell",
+                                        "element_id": f"sheet_{sheet_index}_cell_{cell.coordinate}",
+                                        "text": clean_text,
+                                        "sheet_name": sheet_name,
+                                        "sheet_index": sheet_index,
+                                        "coordinate": cell.coordinate,
+                                        "row": cell.row,
+                                        "column": cell.column
+                                    })
 
             return text_data
 
         except Exception as e:
-            st.error(f"Fehler beim Extrahieren von Text aus dem Dokument: {e}")
+            st.error(f"Fehler beim Extrahieren von Text aus der Excel-Datei: {e}")
             return []
 
     async def batch_translate_texts_with_openai(text_entries: List[Dict], target_language: str, cache: Dict, model: str = "gpt-4.1-mini", system_prompt: str = None, max_retries: int = 3, batch_size: int = 10) -> None:
@@ -326,21 +316,21 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                 if attempt == max_retries - 1:
                     pass
 
-    async def translate_document(document_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
-        """Translates a Word document and returns the translated version as bytes."""
+    async def translate_excel(excel_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
+        """Translates an Excel file and returns the translated version as bytes."""
         
         # Create temporary files with proper encoding
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_input:
-            temp_input.write(document_file.read())
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+            temp_input.write(excel_file.read())
             temp_input_path = temp_input.name
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_output:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_output:
             temp_output_path = temp_output.name
 
         try:
-            text_data = extract_text_from_document(temp_input_path)
+            text_data = extract_text_from_excel(temp_input_path)
             if not text_data:
-                st.warning("Kein Text zum Übersetzen im Dokument gefunden.")
+                st.warning("Kein Text zum Übersetzen in der Excel-Datei gefunden.")
                 return None
 
             # Initialize cache for this session
@@ -348,8 +338,8 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
 
             await batch_translate_texts_with_openai(text_data, target_language, cache, model, system_prompt)
 
-            # Load the document
-            doc = Document(temp_input_path)
+            # Load the workbook
+            workbook = load_workbook(temp_input_path)
 
             # Apply translations
             translated_text_data = []
@@ -364,48 +354,21 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                 translated_text_entry["translated_text"] = translated_text
                 translated_text_data.append(translated_text_entry)
 
-            # Replace text in paragraphs
-            for para_index, paragraph in enumerate(doc.paragraphs):
-                element_id = f"para_{para_index}"
-                translated_entry = next((entry for entry in translated_text_data 
-                                       if entry.get("element_id") == element_id), None)
-                if translated_entry:
-                    try:
-                        # Preserve formatting by replacing runs
-                        if paragraph.runs:
-                            # Clear existing text
-                            for run in paragraph.runs:
-                                run.text = ""
-                            # Set translated text in first run
-                            paragraph.runs[0].text = translated_entry["translated_text"]
-                        else:
-                            # If no runs, set paragraph text directly
-                            paragraph.text = translated_entry["translated_text"]
-                    except Exception as e:
-                        continue
+            # Replace text in cells
+            for entry in translated_text_data:
+                try:
+                    sheet_name = entry["sheet_name"]
+                    coordinate = entry["coordinate"]
+                    worksheet = workbook[sheet_name]
+                    
+                    # Update the cell value with the translated text
+                    worksheet[coordinate] = entry["translated_text"]
+                    
+                except Exception as e:
+                    st.warning(f"Fehler beim Übersetzen der Zelle {entry.get('coordinate', 'unbekannt')}: {e}")
+                    continue
 
-            # Replace text in tables
-            for table_index, table in enumerate(doc.tables):
-                for row_index, row in enumerate(table.rows):
-                    for col_index, cell in enumerate(row.cells):
-                        element_id = f"table_{table_index}_row_{row_index}_col_{col_index}"
-                        translated_entry = next((entry for entry in translated_text_data 
-                                               if entry.get("element_id") == element_id), None)
-                        if translated_entry:
-                            try:
-                                # Clear and set new text for cell
-                                for paragraph in cell.paragraphs:
-                                    if paragraph.runs:
-                                        for run in paragraph.runs:
-                                            run.text = ""
-                                        paragraph.runs[0].text = translated_entry["translated_text"]
-                                    else:
-                                        paragraph.text = translated_entry["translated_text"]
-                                    break  # Only update first paragraph in cell
-                            except Exception as e:
-                                continue
-
-            doc.save(temp_output_path)
+            workbook.save(temp_output_path)
             
             # Read the translated file as bytes
             with open(temp_output_path, 'rb') as f:
@@ -425,7 +388,7 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                 pass
 
     # Main Streamlit app content
-    st.markdown("Übersetze deine Word-Dokumente mit OpenAI's GPT-Modellen")
+    st.markdown("Übersetze deine Excel-Dateien mit OpenAI's GPT-Modellen")
     
     # Sidebar for configuration
     with st.sidebar:
@@ -463,7 +426,7 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         selected_language_name = st.selectbox(
             "Zielsprache",
             options=list(LANGUAGE_OPTIONS.keys()),
-            help="Wähle die Sprache aus, in die du dein Dokument übersetzen möchtest"
+            help="Wähle die Sprache aus, in die du deine Excel-Datei übersetzen möchtest"
         )
         
         target_language = LANGUAGE_OPTIONS[selected_language_name]
@@ -494,12 +457,12 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.header("Dokument hochladen")
+        st.header("Excel-Datei hochladen")
         
         uploaded_file = st.file_uploader(
-            "Word-Datei auswählen",
-            type=['docx'],
-            help="Lade eine .docx-Datei zum Übersetzen hoch"
+            "Excel-Datei auswählen",
+            type=['xlsx', 'xls'],
+            help="Lade eine .xlsx oder .xls-Datei zum Übersetzen hoch"
         )
         
         if uploaded_file is not None:
@@ -508,13 +471,23 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
             # Display file info
             file_size = len(uploaded_file.getvalue()) / 1024 / 1024  # MB
             st.info(f"Dateigröße: {file_size:.2f} MB")
+            
+            # Show a preview of the Excel file content
+            try:
+                uploaded_file.seek(0)  # Reset file pointer
+                df_preview = pd.read_excel(uploaded_file, nrows=5)
+                st.markdown("**Vorschau der ersten 5 Zeilen:**")
+                st.dataframe(df_preview)
+                uploaded_file.seek(0)  # Reset file pointer again
+            except Exception as e:
+                st.warning(f"Konnte keine Vorschau anzeigen: {e}")
     
     with col2:
         st.header("Übersetzung")
         
         if uploaded_file is not None and api_key:
-            if st.button("🚀 Dokument übersetzen", type="primary"):
-                with st.spinner("Dokument wird übersetzt..."):
+            if st.button("🚀 Excel-Datei übersetzen", type="primary"):
+                with st.spinner("Excel-Datei wird übersetzt..."):
                     try:
                         # Reset file pointer
                         uploaded_file.seek(0)
@@ -524,23 +497,23 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                         
                         # Translate the document
                         translated_bytes = asyncio.run(
-                            translate_document(uploaded_file, target_language, selected_model, system_prompt_to_use)
+                            translate_excel(uploaded_file, target_language, selected_model, system_prompt_to_use)
                         )
                         
                         if translated_bytes:
                             # Generate download filename
-                            original_name = uploaded_file.name.replace('.docx', '')
+                            original_name = uploaded_file.name.replace('.xlsx', '').replace('.xls', '')
                             model_suffix = "mini" if "mini" in selected_model else "4o"
-                            download_filename = f"{original_name}_übersetzt_{target_language}_{model_suffix}.docx"
+                            download_filename = f"{original_name}_übersetzt_{target_language}_{model_suffix}.xlsx"
                             
                             st.success("🎉 Übersetzung abgeschlossen!")
                             
                             # Download button
                             st.download_button(
-                                label="📥 Übersetztes Dokument herunterladen",
+                                label="📥 Übersetzte Excel-Datei herunterladen",
                                 data=translated_bytes,
                                 file_name=download_filename,
-                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             )
                         else:
                             st.error("Übersetzung fehlgeschlagen. Bitte versuche es erneut.")
@@ -551,7 +524,7 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         elif not api_key:
             st.warning("⚠️ Bitte gib deinen OpenAI API-Schlüssel in der Seitenleiste ein")
         elif uploaded_file is None:
-            st.info("📤 Bitte lade ein Word-Dokument hoch, um zu beginnen")
+            st.info("📤 Bitte lade eine Excel-Datei hoch, um zu beginnen")
     
     # Model comparison info
     with st.expander("🔍 Modell-Vergleich"):
@@ -576,16 +549,24 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         3. **Modell auswählen**: Wähle zwischen GPT-4.1-mini (Standard, schneller & günstiger) oder GPT-4o (höchste Qualität)
         4. **Sprache auswählen**: Wähle deine Zielsprache aus dem Dropdown-Menü
         5. **Systemprompt anpassen** (optional): Passe das Übersetzungsverhalten im erweiterten Bereich an
-        6. **Datei hochladen**: Lade dein Word (.docx) Dokument hoch
+        6. **Datei hochladen**: Lade deine Excel (.xlsx oder .xls) Datei hoch
         7. **Übersetzen**: Klicke auf den Übersetzen-Button und warte, bis der Prozess abgeschlossen ist
-        8. **Herunterladen**: Lade dein übersetztes Dokument herunter
+        8. **Herunterladen**: Lade deine übersetzte Excel-Datei herunter
         
-        **Hinweis**: Der Übersetzungsprozess kann je nach Größe deines Dokuments einige Minuten dauern.
+        **Hinweis**: Der Übersetzungsprozess kann je nach Größe deiner Excel-Datei einige Minuten dauern.
         
         **Unterstützte Elemente:**
-        - Paragraphen (Text, Überschriften, Titel)
-        - Tabellen
+        - Alle Arbeitsblätter in der Excel-Datei
+        - Textzellen (numerische Werte werden übersprungen)
         - Formatierung wird beibehalten
+        - Formeln bleiben unverändert
+        
+        **Was wird NICHT übersetzt:**
+        - Reine Zahlen
+        - Datumswerte
+        - Formeln
+        - E-Mail-Adressen
+        - Telefonnummern
         """)
     
     # Footer
@@ -593,4 +574,4 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
 
 # Call the function when the script is run directly
 if __name__ == "__main__":
-    word_app()
+    excel_app()

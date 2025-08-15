@@ -89,7 +89,7 @@ def word_app():
                         
                         # Stream die Antwort für den gesamten Text
                         response_stream = client.chat.completions.create(
-                            model="gpt-4o-mini",
+                            model="gpt-5-mini",
                             messages=messages,
                             temperature=0.2,
                             max_tokens=16000,
@@ -119,7 +119,7 @@ def word_app():
                             
                             # Stream die Antwort
                             response_stream = client.chat.completions.create(
-                                model="gpt-4o-mini",
+                                model="gpt-5-mini",
                                 messages=messages,
                                 temperature=0.2,
                                 max_tokens=16000,

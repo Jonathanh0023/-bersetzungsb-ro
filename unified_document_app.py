@@ -6,6 +6,8 @@ from pathlib import Path
 import difflib
 from html import escape
 from docx import Document
+from openpyxl import load_workbook, Workbook
+from pptx import Presentation
 from io import BytesIO
 import re
 from docx.shared import Pt, RGBColor
@@ -21,18 +23,18 @@ import asyncio
 import tempfile
 import io
 
-def word_app():
+def unified_document_app():
     # Titel der App
-    st.title("BonsAI Word Dokument Sprachprüfung und Korrektur")
+    st.title("🌍 BonsAI Universal Dokument Übersetzer")
 
     # --- Constants and Configurations ---
 
-    SUPPORTED_EXTENSIONS = ('.docx',)
+    SUPPORTED_EXTENSIONS = ('.docx', '.pptx', '.xlsx', '.xls')
 
     # Model options for the dropdown
     MODEL_OPTIONS = {
         "GPT-5-mini": "gpt-5-mini",
-        "GPT-4.1-mini": "gpt-4.1-mini",
+        "GPT-4.1-mini": "gpt-4.1-mini", 
         "GPT-4o": "gpt-4o"
     }
 
@@ -116,6 +118,38 @@ Gib die Übersetzung als JSON-Objekt genau wie folgt zurück: {{"translated": "<
             st.warning(f"Textverarbeitungsfehler: {e}")
             return str(text) if text else ""
 
+    def detect_file_type(uploaded_file) -> str:
+        """Detects the type of uploaded file based on extension."""
+        file_name = uploaded_file.name.lower()
+        if file_name.endswith('.docx'):
+            return 'word'
+        elif file_name.endswith('.pptx'):
+            return 'powerpoint'
+        elif file_name.endswith(('.xlsx', '.xls')):
+            return 'excel'
+        else:
+            return 'unknown'
+
+    def get_file_icon(file_type: str) -> str:
+        """Returns appropriate icon for file type."""
+        icons = {
+            'word': '📄',
+            'powerpoint': '📊', 
+            'excel': '📈',
+            'unknown': '📁'
+        }
+        return icons.get(file_type, '📁')
+
+    def get_file_type_name(file_type: str) -> str:
+        """Returns human readable file type name."""
+        names = {
+            'word': 'Word-Dokument',
+            'powerpoint': 'PowerPoint-Präsentation',
+            'excel': 'Excel-Tabelle',
+            'unknown': 'Unbekannter Dateityp'
+        }
+        return names.get(file_type, 'Unbekannter Dateityp')
+
     async def translate_text_with_openai(prompt: str, target_language: str, cache: Dict, model: str = "gpt-4.1-mini", system_prompt: str = None, max_retries: int = 3) -> str:
         """Translates text using the OpenAI API, with caching and retries."""
         # Ensure proper text encoding
@@ -173,6 +207,7 @@ Gib die Übersetzung als JSON-Objekt genau wie folgt zurück: {{"translated": "<
                     return prompt
         return prompt
 
+    # ===== WORD DOCUMENT FUNCTIONS =====
     def extract_text_from_document(document_path: str) -> List[Dict]:
         """Extracts text and context from a Word document."""
         try:
@@ -224,6 +259,106 @@ Gib die Übersetzung als JSON-Objekt genau wie folgt zurück: {{"translated": "<
 
         except Exception as e:
             st.error(f"Fehler beim Extrahieren von Text aus dem Dokument: {e}")
+            return []
+
+    # ===== EXCEL FUNCTIONS =====
+    def extract_text_from_excel(file_path: str) -> List[Dict]:
+        """Extracts text and context from an Excel file."""
+        try:
+            # Load the workbook
+            workbook = load_workbook(file_path, data_only=True)
+            text_data = []
+
+            # Extract text from all worksheets
+            for sheet_index, sheet_name in enumerate(workbook.sheetnames):
+                worksheet = workbook[sheet_name]
+                
+                # Iterate through all cells in the worksheet
+                for row in worksheet.iter_rows():
+                    for cell in row:
+                        if cell.value is not None and str(cell.value).strip():
+                            # Only process text cells (not numbers, dates, etc.)
+                            cell_value = str(cell.value).strip()
+                            # Skip cells that are purely numeric
+                            try:
+                                float(cell_value)
+                                continue  # Skip numeric values
+                            except ValueError:
+                                pass  # Continue with text processing
+                            
+                            # Check if it looks like text (contains letters)
+                            if re.search(r'[a-zA-ZäöüÄÖÜß]', cell_value):
+                                # Safely extract and normalize text
+                                clean_text = safe_text_extraction(cell_value)
+                                if clean_text and len(clean_text) > 1:  # Skip single characters
+                                    text_data.append({
+                                        "element_type": "cell",
+                                        "element_id": f"sheet_{sheet_index}_cell_{cell.coordinate}",
+                                        "text": clean_text,
+                                        "sheet_name": sheet_name,
+                                        "sheet_index": sheet_index,
+                                        "coordinate": cell.coordinate,
+                                        "row": cell.row,
+                                        "column": cell.column
+                                    })
+
+            return text_data
+
+        except Exception as e:
+            st.error(f"Fehler beim Extrahieren von Text aus der Excel-Datei: {e}")
+            return []
+
+    # ===== POWERPOINT FUNCTIONS =====
+    def extract_text_from_presentation(presentation_path: str) -> List[Dict]:
+        """Extracts text and context from a PowerPoint presentation."""
+        try:
+            prs = Presentation(presentation_path)
+            text_data = []
+
+            for slide_number, slide in enumerate(prs.slides, start=1):
+                for shape_index, shape in enumerate(slide.shapes):
+                    shape_id = f"slide{slide_number}_shape{shape_index}"
+                    if shape.has_text_frame:
+                        text_frame = shape.text_frame
+                        for paragraph in text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if run.text.strip():
+                                    # Safely extract and normalize text
+                                    clean_text = safe_text_extraction(run.text)
+                                    if clean_text:
+                                        shape_type = "UNKNOWN"
+                                        if shape == slide.shapes.title:
+                                            shape_type = "TITLE"
+                                        elif shape.has_table:
+                                            shape_type = "TABLE"
+                                        else:
+                                            shape_type = "BODY"
+
+                                        text_data.append({
+                                            "slide_number": slide_number,
+                                            "shape_type": shape_type,
+                                            "text": clean_text,
+                                            "shape_id": shape_id,
+                                        })
+
+                    elif shape.has_table:
+                        for row_idx, row in enumerate(shape.table.rows):
+                            for col_idx, cell in enumerate(row.cells):
+                                if cell.text.strip():
+                                    # Safely extract and normalize text
+                                    clean_text = safe_text_extraction(cell.text)
+                                    if clean_text:
+                                        text_data.append({
+                                            "slide_number": slide_number,
+                                            "shape_type": "TABLE",
+                                            "text": clean_text,
+                                            "shape_id": f"{shape_id}_row{row_idx}_col{col_idx}"
+                                        })
+
+            return text_data
+
+        except Exception as e:
+            st.error(f"Fehler beim Extrahieren von Text aus der Präsentation: {e}")
             return []
 
     async def batch_translate_texts_with_openai(text_entries: List[Dict], target_language: str, cache: Dict, model: str = "gpt-4.1-mini", system_prompt: str = None, max_retries: int = 3, batch_size: int = 10) -> None:
@@ -326,6 +461,7 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                 if attempt == max_retries - 1:
                     pass
 
+    # ===== TRANSLATION FUNCTIONS FOR EACH FILE TYPE =====
     async def translate_document(document_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
         """Translates a Word document and returns the translated version as bytes."""
         
@@ -424,8 +560,173 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
             except:
                 pass
 
+    async def translate_excel(excel_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
+        """Translates an Excel file and returns the translated version as bytes."""
+        
+        # Create temporary files with proper encoding
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+            temp_input.write(excel_file.read())
+            temp_input_path = temp_input.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_output:
+            temp_output_path = temp_output.name
+
+        try:
+            text_data = extract_text_from_excel(temp_input_path)
+            if not text_data:
+                st.warning("Kein Text zum Übersetzen in der Excel-Datei gefunden.")
+                return None
+
+            # Initialize cache for this session
+            cache = {}
+
+            await batch_translate_texts_with_openai(text_data, target_language, cache, model, system_prompt)
+
+            # Load the workbook
+            workbook = load_workbook(temp_input_path)
+
+            # Apply translations
+            translated_text_data = []
+            cache_key_base = model + (system_prompt or DEFAULT_SYSTEM_PROMPT)
+            
+            for text_entry in text_data:
+                clean_text = safe_text_extraction(text_entry["text"])
+                cache_key = clean_text + cache_key_base
+                prompt_hash = generate_prompt_hash(cache_key)
+                translated_text = cache.get(prompt_hash, clean_text)
+                translated_text_entry = text_entry.copy()
+                translated_text_entry["translated_text"] = translated_text
+                translated_text_data.append(translated_text_entry)
+
+            # Replace text in cells
+            for entry in translated_text_data:
+                try:
+                    sheet_name = entry["sheet_name"]
+                    coordinate = entry["coordinate"]
+                    worksheet = workbook[sheet_name]
+                    
+                    # Update the cell value with the translated text
+                    worksheet[coordinate] = entry["translated_text"]
+                    
+                except Exception as e:
+                    st.warning(f"Fehler beim Übersetzen der Zelle {entry.get('coordinate', 'unbekannt')}: {e}")
+                    continue
+
+            workbook.save(temp_output_path)
+            
+            # Read the translated file as bytes
+            with open(temp_output_path, 'rb') as f:
+                translated_bytes = f.read()
+            
+            return translated_bytes
+
+        except Exception as e:
+            st.error(f"Fehler während des Übersetzungsprozesses: {e}")
+            return None
+        finally:
+            # Clean up temporary files
+            try:
+                os.unlink(temp_input_path)
+                os.unlink(temp_output_path)
+            except:
+                pass
+
+    async def translate_presentation(presentation_file, target_language: str, model: str = "gpt-4.1-mini", system_prompt: str = None) -> bytes:
+        """Translates a PowerPoint presentation and returns the translated version as bytes."""
+        
+        # Create temporary files with proper encoding
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as temp_input:
+            temp_input.write(presentation_file.read())
+            temp_input_path = temp_input.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as temp_output:
+            temp_output_path = temp_output.name
+
+        try:
+            text_data = extract_text_from_presentation(temp_input_path)
+            if not text_data:
+                st.warning("Kein Text zum Übersetzen in der Präsentation gefunden.")
+                return None
+
+            # Initialize cache for this session
+            cache = {}
+
+            await batch_translate_texts_with_openai(text_data, target_language, cache, model, system_prompt)
+
+            # Load and save the presentation
+            prs = Presentation(temp_input_path)
+            prs.save(temp_output_path)
+
+            translated_prs = Presentation(temp_output_path)
+
+            # Apply translations
+            translated_text_data = []
+            cache_key_base = model + (system_prompt or DEFAULT_SYSTEM_PROMPT)
+            
+            for text_entry in text_data:
+                clean_text = safe_text_extraction(text_entry["text"])
+                cache_key = clean_text + cache_key_base
+                prompt_hash = generate_prompt_hash(cache_key)
+                translated_text = cache.get(prompt_hash, clean_text)
+                translated_text_entry = text_entry.copy()
+                translated_text_entry["translated_text"] = translated_text
+                translated_text_data.append(translated_text_entry)
+
+            for slide_number, slide in enumerate(translated_prs.slides, start=1):
+                for shape_index, shape in enumerate(slide.shapes):
+                    shape_id = f"slide{slide_number}_shape{shape_index}"
+
+                    if shape.has_text_frame:
+                        try:
+                            text_frame = shape.text_frame
+                            for paragraph in text_frame.paragraphs:
+                                for run in paragraph.runs:
+                                    if run.text.strip():
+                                        clean_original_text = safe_text_extraction(run.text)
+                                        for entry in translated_text_data:
+                                            if entry["shape_id"] == shape_id and safe_text_extraction(entry["text"]) == clean_original_text:
+                                                # Ensure proper encoding when setting the text
+                                                run.text = entry["translated_text"]
+                                                break
+                        except Exception as e:
+                            continue
+
+                    elif shape.has_table:
+                        try:
+                            for row_idx, row in enumerate(shape.table.rows):
+                                for col_idx, cell in enumerate(row.cells):
+                                    cell_shape_id = f"{shape_id}_row{row_idx}_col{col_idx}"
+                                    cell_translated_text_entry = next((entry for entry in translated_text_data if entry["shape_id"] == cell_shape_id), None)
+                                    if cell_translated_text_entry:
+                                        # Ensure proper encoding when setting the text
+                                        cell.text = cell_translated_text_entry["translated_text"]
+                        except Exception as e:
+                            continue
+
+            translated_prs.save(temp_output_path)
+            
+            # Read the translated file as bytes
+            with open(temp_output_path, 'rb') as f:
+                translated_bytes = f.read()
+            
+            return translated_bytes
+
+        except Exception as e:
+            st.error(f"Fehler während des Übersetzungsprozesses: {e}")
+            return None
+        finally:
+            # Clean up temporary files
+            try:
+                os.unlink(temp_input_path)
+                os.unlink(temp_output_path)
+            except:
+                pass
+
     # Main Streamlit app content
-    st.markdown("Übersetze deine Word-Dokumente mit OpenAI's GPT-Modellen")
+    st.markdown("✨ **Übersetze deine Word-, PowerPoint- und Excel-Dateien mit einem einzigen Tool!**")
+    
+    # Info box with supported formats
+    st.info("📋 **Unterstützte Formate:** Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls)")
     
     # Sidebar for configuration
     with st.sidebar:
@@ -494,27 +795,45 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.header("Dokument hochladen")
+        st.header("📁 Dokument hochladen")
         
         uploaded_file = st.file_uploader(
-            "Word-Datei auswählen",
-            type=['docx'],
-            help="Lade eine .docx-Datei zum Übersetzen hoch"
+            "Wähle deine Datei",
+            type=['docx', 'pptx', 'xlsx', 'xls'],
+            help="Lade eine Word (.docx), PowerPoint (.pptx) oder Excel (.xlsx/.xls) Datei hoch"
         )
         
         if uploaded_file is not None:
-            st.success(f"✅ Datei hochgeladen: {uploaded_file.name}")
+            file_type = detect_file_type(uploaded_file)
+            file_icon = get_file_icon(file_type)
+            file_type_name = get_file_type_name(file_type)
+            
+            st.success(f"✅ {file_icon} {file_type_name} hochgeladen: {uploaded_file.name}")
             
             # Display file info
             file_size = len(uploaded_file.getvalue()) / 1024 / 1024  # MB
-            st.info(f"Dateigröße: {file_size:.2f} MB")
+            st.info(f"📏 Dateigröße: {file_size:.2f} MB")
+            
+            # Show file type specific preview for Excel
+            if file_type == 'excel':
+                try:
+                    uploaded_file.seek(0)  # Reset file pointer
+                    df_preview = pd.read_excel(uploaded_file, nrows=5)
+                    st.markdown("**📊 Vorschau der ersten 5 Zeilen:**")
+                    st.dataframe(df_preview)
+                    uploaded_file.seek(0)  # Reset file pointer again
+                except Exception as e:
+                    st.warning(f"Konnte keine Vorschau anzeigen: {e}")
     
     with col2:
-        st.header("Übersetzung")
+        st.header("🚀 Übersetzung")
         
         if uploaded_file is not None and api_key:
-            if st.button("🚀 Dokument übersetzen", type="primary"):
-                with st.spinner("Dokument wird übersetzt..."):
+            file_type = detect_file_type(uploaded_file)
+            file_icon = get_file_icon(file_type)
+            
+            if st.button(f"🌍 {file_icon} Dokument übersetzen", type="primary"):
+                with st.spinner(f"{file_icon} Dokument wird übersetzt..."):
                     try:
                         # Reset file pointer
                         uploaded_file.seek(0)
@@ -522,25 +841,46 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
                         # Use custom system prompt if different from default
                         system_prompt_to_use = custom_system_prompt if custom_system_prompt != DEFAULT_SYSTEM_PROMPT else None
                         
-                        # Translate the document
-                        translated_bytes = asyncio.run(
-                            translate_document(uploaded_file, target_language, selected_model, system_prompt_to_use)
-                        )
+                        # Route to appropriate translation function based on file type
+                        if file_type == 'word':
+                            translated_bytes = asyncio.run(
+                                translate_document(uploaded_file, target_language, selected_model, system_prompt_to_use)
+                            )
+                            file_extension = '.docx'
+                            mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        elif file_type == 'excel':
+                            translated_bytes = asyncio.run(
+                                translate_excel(uploaded_file, target_language, selected_model, system_prompt_to_use)
+                            )
+                            file_extension = '.xlsx'
+                            mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        elif file_type == 'powerpoint':
+                            translated_bytes = asyncio.run(
+                                translate_presentation(uploaded_file, target_language, selected_model, system_prompt_to_use)
+                            )
+                            file_extension = '.pptx'
+                            mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        else:
+                            st.error("Nicht unterstützter Dateityp!")
+                            translated_bytes = None
                         
                         if translated_bytes:
                             # Generate download filename
-                            original_name = uploaded_file.name.replace('.docx', '')
-                            model_suffix = "mini" if "mini" in selected_model else "4o"
-                            download_filename = f"{original_name}_übersetzt_{target_language}_{model_suffix}.docx"
+                            original_name = uploaded_file.name
+                            for ext in ['.docx', '.pptx', '.xlsx', '.xls']:
+                                original_name = original_name.replace(ext, '')
                             
-                            st.success("🎉 Übersetzung abgeschlossen!")
+                            model_suffix = "mini" if "mini" in selected_model else "4o"
+                            download_filename = f"{original_name}_übersetzt_{target_language}_{model_suffix}{file_extension}"
+                            
+                            st.success(f"🎉 {file_icon} Übersetzung abgeschlossen!")
                             
                             # Download button
                             st.download_button(
-                                label="📥 Übersetztes Dokument herunterladen",
+                                label=f"📥 {file_icon} Übersetztes Dokument herunterladen",
                                 data=translated_bytes,
                                 file_name=download_filename,
-                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                mime=mime_type
                             )
                         else:
                             st.error("Übersetzung fehlgeschlagen. Bitte versuche es erneut.")
@@ -551,21 +891,45 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         elif not api_key:
             st.warning("⚠️ Bitte gib deinen OpenAI API-Schlüssel in der Seitenleiste ein")
         elif uploaded_file is None:
-            st.info("📤 Bitte lade ein Word-Dokument hoch, um zu beginnen")
+            st.info("📤 Bitte lade ein Dokument hoch, um zu beginnen")
+    
+    # Supported file types info
+    with st.expander("📋 Unterstützte Dateiformate"):
+        st.markdown("""
+        | Format | Dateierweiterung | Was wird übersetzt | 
+        |--------|------------------|-------------------|
+        | **📄 Word** | .docx | Paragraphen, Überschriften, Tabellen |
+        | **📊 PowerPoint** | .pptx | Folieninhalte, Titel, Tabellen |
+        | **📈 Excel** | .xlsx, .xls | Textinhalte in Zellen (alle Arbeitsblätter) |
+        
+        **Was wird NICHT übersetzt:**
+        - Reine Zahlen und Datumswerte
+        - E-Mail-Adressen und Telefonnummern
+        - Formeln in Excel
+        - Bilder und Grafiken
+        """)
     
     # Model comparison info
     with st.expander("🔍 Modell-Vergleich"):
         st.markdown("""
         | Modell | Geschwindigkeit | Kosten | Qualität | Beste Verwendung |
         |--------|----------------|--------|----------|------------------|
+        | **GPT-5-mini** | Sehr schnell | Optimiert | Ausgezeichnet | Standard für alle Übersetzungen (empfohlen) |
         | **GPT-4.1-mini** | Schneller | 83% günstiger | Sehr gut | Alltägliche Übersetzungen, große Mengen |
-        | **GPT-4o** | Standard | Standard | Höchste | Wichtige Dokumente, maximale Genauigkeit |
+        | **GPT-4o** | Standard | Standard | Bewährt | Wichtige Dokumente, maximale Genauigkeit |
+        
+        **GPT-5-mini Vorteile (Standard):**
+        - 🚀 Neueste KI-Technologie
+        - ⚡ Optimierte Geschwindigkeit und Effizienz
+        - 🎯 Verbesserte Übersetzungsqualität
+        - 💰 Kosteneffizient bei hoher Leistung
+        - 📄 Erweiterte Kontextverarbeitung
         
         **GPT-4.1-mini Vorteile:**
         - ⚡ Deutlich schnellere Verarbeitung
         - 💰 Erheblich niedrigere Kosten
         - 🎯 Sehr gute Qualität für die meisten Anwendungsfälle
-        - 📄 1 Million Token Kontext (wie GPT-4o)
+        - 📄 1 Million Token Kontext
         """)
     
     # Instructions
@@ -573,24 +937,26 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         st.markdown("""
         1. **OpenAI API-Schlüssel besorgen**: Frag Tobias oder Jonathan um den API-Schlüssel zu erhalten
         2. **API-Schlüssel eingeben**: Füge deinen API-Schlüssel in der Seitenleiste ein (er wird sicher in deiner Sitzung gespeichert)
-        3. **Modell auswählen**: Wähle zwischen GPT-4.1-mini (Standard, schneller & günstiger) oder GPT-4o (höchste Qualität)
+        3. **Modell auswählen**: GPT-5-mini ist bereits als Standard ausgewählt (empfohlen). Alternativ: GPT-4.1-mini oder GPT-4o
         4. **Sprache auswählen**: Wähle deine Zielsprache aus dem Dropdown-Menü
         5. **Systemprompt anpassen** (optional): Passe das Übersetzungsverhalten im erweiterten Bereich an
-        6. **Datei hochladen**: Lade dein Word (.docx) Dokument hoch
+        6. **Datei hochladen**: Lade dein Word (.docx), PowerPoint (.pptx) oder Excel (.xlsx/.xls) Dokument hoch
         7. **Übersetzen**: Klicke auf den Übersetzen-Button und warte, bis der Prozess abgeschlossen ist
         8. **Herunterladen**: Lade dein übersetztes Dokument herunter
         
-        **Hinweis**: Der Übersetzungsprozess kann je nach Größe deines Dokuments einige Minuten dauern.
+        **🔧 Funktionen:**
+        - **Automatische Erkennung** des Dateiformats
+        - **Formatierung bleibt erhalten** nach der Übersetzung
+        - **Batch-Verarbeitung** für effiziente Übersetzung großer Dokumente
+        - **Caching** verhindert doppelte Übersetzungen identischer Texte
         
-        **Unterstützte Elemente:**
-        - Paragraphen (Text, Überschriften, Titel)
-        - Tabellen
-        - Formatierung wird beibehalten
+        **⏱️ Hinweis**: Der Übersetzungsprozess kann je nach Größe deines Dokuments einige Minuten dauern.
         """)
     
     # Footer
     st.markdown("---")
+    st.markdown("🌍 **BonsAI Universal Dokument Übersetzer** - Ein Tool für alle Office-Formate")
 
 # Call the function when the script is run directly
 if __name__ == "__main__":
-    word_app()
+    unified_document_app()

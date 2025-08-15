@@ -23,6 +23,7 @@ def powerpoint_app():
 
     # Model options for the dropdown
     MODEL_OPTIONS = {
+        "GPT-5-mini": "gpt-5-mini",
         "GPT-4.1-mini": "gpt-4.1-mini",
         "GPT-4o": "gpt-4o"
     }
@@ -429,16 +430,18 @@ Gib die Übersetzungen als JSON-Objekt genau wie folgt zurück:
         selected_model_name = st.selectbox(
             "KI-Modell",
             options=list(MODEL_OPTIONS.keys()),
-            help="Wähle das KI-Modell für die Übersetzung. GPT-4.1-mini ist schneller und günstiger, GPT-4o bietet höchste Qualität."
+            help="Wähle das KI-Modell für die Übersetzung. GPT-5-mini ist das empfohlene Standard-Modell mit neuester Technologie."
         )
         
         selected_model = MODEL_OPTIONS[selected_model_name]
         
         # Show model info
-        if "mini" in selected_model:
+        if "gpt-5-mini" in selected_model:
+            st.info("🚀 GPT-5-mini: Neuestes Modell mit verbesserter Effizienz und Qualität")
+        elif "4.1-mini" in selected_model:
             st.info("💡 GPT-4.1-mini: Schneller & 83% günstiger als GPT-4o")
         else:
-            st.info("🎯 GPT-4o: Höchste Qualität & Genauigkeit")
+            st.info("🎯 GPT-4o: Bewährte hohe Qualität & Genauigkeit")
         
         # Language selection
         selected_language_name = st.selectbox(
