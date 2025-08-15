@@ -48,28 +48,26 @@ def selection_page():
         unsafe_allow_html=True
     )
 
-    # Größere Buttons erstellen - Erste Zeile mit einem Button (zentriert)
-    col1, col2, col3 = st.columns([2, 8, 2])  # Better centering with more balanced proportions
-    with col2:
-        st.markdown(
-            f"""
-            <style>
-            div.stButton > button:first-child {{
-                height: 150px;
-                width: 100%;
-                font-size: 18px;
-                color: #3c3c3c; /* Corrected color format */
-                border-radius: 15px; /* Rounded corners */
-            }}
-            </style>
-            """,    
-            unsafe_allow_html=True,
-        )
-        st.button(
-            "**Allgemeines KI-Übersetzungsbüro**",
-            on_click=lambda: select_app("allgemein"),
-            key="allgemein_button",
-        )
+    # Erste Zeile mit vollem Button
+    st.markdown(
+        f"""
+        <style>
+        div.stButton > button:first-child {{
+            height: 150px;
+            width: 100%;
+            font-size: 18px;
+            color: #3c3c3c; /* Corrected color format */
+            border-radius: 15px; /* Rounded corners */
+        }}
+        </style>
+        """,    
+        unsafe_allow_html=True,
+    )
+    st.button(
+        "**Allgemeines KI-Übersetzungsbüro**",
+        on_click=lambda: select_app("allgemein"),
+        key="allgemein_button",
+    )
 
     # Zweite Zeile mit zwei Buttons in zwei Spalten
     col4, col5 = st.columns(2)
