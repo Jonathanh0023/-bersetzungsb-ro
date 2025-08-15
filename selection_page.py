@@ -48,8 +48,8 @@ def selection_page():
         unsafe_allow_html=True
     )
 
-    # Größere Buttons erstellen - Erste Zeile mit einem Button
-    col1, col2, col3 = st.columns([1, 10, 1])  # Make the middle column wider to match the width of two columns below
+    # Größere Buttons erstellen - Erste Zeile mit einem Button (zentriert)
+    col1, col2, col3 = st.columns([2, 8, 2])  # Better centering with more balanced proportions
     with col2:
         st.markdown(
             f"""
