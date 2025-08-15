@@ -3,11 +3,8 @@ from config import set_page_config, apply_global_css
 from utils import initialize_session_state
 from selection_page import selection_page
 from allgemeine_app import allgemeine_app
-from key_account_app import key_account_app
+
 from matching_app import matching_app
-from powerpoint_app import powerpoint_app
-from word_app import word_app
-from excel_app import excel_app
 from unified_document_app import unified_document_app
 from transkript import main as transkript_app
 from Transkriptverabeitungsapp import word_app as transkript_verarbeitung_app
@@ -37,12 +34,6 @@ def main():
             allgemeine_app()
         elif st.session_state.app_selected == "matching":
             matching_app()
-        elif st.session_state.app_selected == "powerpoint":
-            powerpoint_app()
-        elif st.session_state.app_selected == "word":
-            word_app()
-        elif st.session_state.app_selected == "excel":
-            excel_app()
         elif st.session_state.app_selected == "unified_documents":
             unified_document_app()
         elif st.session_state.app_selected == "transkript":

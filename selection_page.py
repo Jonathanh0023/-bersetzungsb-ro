@@ -89,9 +89,9 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "**Key Account Übersetzungsbüro**\n\n (inaktiv)",
-            on_click=lambda: select_app("key_account"),
-            key="key_account_button",
+            "**🌍 Universal Dokument Übersetzer**\n\n(Übersetze Word-, PowerPoint- und Excel-Dateien mit einem einzigen Tool! Automatische Erkennung des Dateiformats)",
+            on_click=lambda: select_app("unified_documents"),
+            key="unified_documents_button",
         )
     with col5:
         st.markdown(
@@ -114,30 +114,7 @@ def selection_page():
             key="matching_button",
         )
 
-    # Dritte Zeile mit dem Universal Document Translator
-    col_unified1, col_unified2, col_unified3 = st.columns([1, 10, 1])
-    with col_unified2:
-        st.markdown(
-            f"""
-            <style>
-            div.stButton > button:first-child {{
-                height: 150px;
-                width: 100%;
-                font-size: 18px;
-                color: #3c3c3c;
-                border-radius: 15px;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.button(
-            "**🌍 Universal Dokument Übersetzer**\n\n(Übersetze Word-, PowerPoint- und Excel-Dateien mit einem einzigen Tool! Automatische Erkennung des Dateiformats)",
-            on_click=lambda: select_app("unified_documents"),
-            key="unified_documents_button",
-        )
-
-    # Neue Zeile für die Transkript-Apps (nebeneinander)
+    # Dritte Zeile für die Transkript-Apps (nebeneinander)
     col8, col9 = st.columns(2)
     with col8:
         st.markdown(
@@ -176,12 +153,12 @@ def selection_page():
             unsafe_allow_html=True,
         )
         st.button(
-            "**Word-Universal-KI-Verarbeitung**\n\n(Word-Dokumente können hier von der KI beliebig bearbeitet werden. Auch die Verarbeitung mehrerer Dateien ist hier simultan möglich.)",
+            "**💬 Chatte mit deinen Word Dateien**\n\n(Lade Word-Dokumente hoch und stelle der KI Fragen dazu. Perfekt für Analyse, Zusammenfassungen und intelligente Bearbeitung.)",
             on_click=lambda: select_app("transkript_verarbeitung"),
             key="transkript_verarbeitung_button",
         )
         
-    # Neue Zeile für Alle Jobs App
+    # Vierte Zeile für Alle Jobs App
     col10 = st.columns([1, 10, 1])[1]  # Nur die mittlere Spalte verwenden
     with col10:
         st.markdown(
