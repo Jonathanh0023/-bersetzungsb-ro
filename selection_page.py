@@ -48,26 +48,41 @@ def selection_page():
         unsafe_allow_html=True
     )
 
-    # Erste Zeile mit vollem Button
+    # Erste Zeile mit vollem Button - mit expliziter Container-Kontrolle
     st.markdown(
-        f"""
+        """
         <style>
-        div.stButton > button:first-child {{
-            height: 150px;
-            width: 100%;
-            font-size: 18px;
-            color: #3c3c3c; /* Corrected color format */
-            border-radius: 15px; /* Rounded corners */
-        }}
+        .full-width-button {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .full-width-button > div {
+            width: 100% !important;
+        }
+        .full-width-button button {
+            height: 150px !important;
+            width: 100% !important;
+            font-size: 18px !important;
+            color: #3c3c3c !important;
+            border-radius: 15px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
         </style>
         """,    
         unsafe_allow_html=True,
     )
+    
+    # Container für den vollbreiten Button
+    st.markdown('<div class="full-width-button">', unsafe_allow_html=True)
     st.button(
         "**Allgemeines KI-Übersetzungsbüro**",
         on_click=lambda: select_app("allgemein"),
         key="allgemein_button",
+        use_container_width=True
     )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Zweite Zeile mit zwei Buttons in zwei Spalten
     col4, col5 = st.columns(2)
